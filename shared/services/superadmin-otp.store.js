@@ -1,6 +1,6 @@
 const store = new Map();
 
-const normalizeEmail = (email) => (email || "").toLowerCase();
+const normalizeEmail = (email) => (email || "").trim().toLowerCase();
 
 const setOtp = (email, payload) => {
   store.set(normalizeEmail(email), payload);

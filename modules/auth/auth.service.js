@@ -67,10 +67,12 @@ const register = async (payload) => {
   };
 };
 
+const normalizeEmail = (email) => (email || "").trim().toLowerCase();
+
 const isEnvSuperAdmin = (email) => {
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
   if (!superAdminEmail) return false;
-  return email && email.toLowerCase() === superAdminEmail.toLowerCase();
+  return normalizeEmail(email) === normalizeEmail(superAdminEmail);
 };
 
 const validateSuperAdminPassword = (password) => {

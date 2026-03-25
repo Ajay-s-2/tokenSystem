@@ -1,0 +1,495 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Hospital Token Booking API",
+    "version": "1.0.0",
+    "description": "Authentication, admin, and super admin APIs with OTP verification."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000/api",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "age",
+          "gender",
+          "role",
+          "specialization",
+          "email",
+          "password",
+          "confirmPassword"
+        ],
+        "properties": {
+          "name": { "type": "string", "example": "Dr Asha" },
+          "age": { "type": "number", "example": 32 },
+          "gender": { "type": "string", "example": "female" },
+          "role": { "type": "string", "example": "doctor" },
+          "specialization": { "type": "string", "example": "Cardiology" },
+          "email": { "type": "string", "example": "asha@example.com" },
+          "password": { "type": "string", "example": "Pass@123" },
+          "confirmPassword": { "type": "string", "example": "Pass@123" }
+        }
+      },
+      "VerifyOtpRequest": {
+        "type": "object",
+        "required": ["email", "otp"],
+        "properties": {
+          "email": { "type": "string", "example": "asha@example.com" },
+          "otp": { "type": "string", "example": "123456" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "example": "asha@example.com" },
+          "password": { "type": "string", "example": "Pass@123" }
+        }
+      },
+      "CreateAdminRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "age",
+          "gender",
+          "specialization",
+          "email",
+          "password",
+          "confirmPassword"
+        ],
+        "properties": {
+          "name": { "type": "string", "example": "Admin One" },
+          "age": { "type": "number", "example": 40 },
+          "gender": { "type": "string", "example": "male" },
+          "specialization": { "type": "string", "example": "Operations" },
+          "email": { "type": "string", "example": "admin1@example.com" },
+          "password": { "type": "string", "example": "Admin@123" },
+          "confirmPassword": { "type": "string", "example": "Admin@123" }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "OK" },
+          "data": { "type": "object", "nullable": true }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string", "example": "Validation error" },
+          "errors": { "type": "object", "nullable": true }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "success": false,
+              "message": "Invalid or expired token",
+              "errors": null
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "success": false,
+              "message": "Forbidden: insufficient permissions",
+              "errors": null
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "success": false,
+              "message": "Missing required fields",
+              "errors": null
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register user (doctor / hospital_staff / admin)",
+        "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. OTP is printed in the server terminal.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" },
+              "example": {
+                "name": "Dr Asha",
+                "age": 32,
+                "gender": "female",
+                "role": "doctor",
+                "specialization": "Cardiology",
+                "email": "asha@example.com",
+                "password": "Pass@123",
+                "confirmPassword": "Pass@123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "User registered. Please verify OTP.",
+                  "data": { "userId": "65f1a1c2e2a5f83a9b8c1234" }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/verify-register-otp": {
+      "post": {
+        "summary": "Verify registration OTP",
+        "description": "Marks the user's email as verified.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VerifyOtpRequest" },
+              "example": { "email": "asha@example.com", "otp": "123456" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Email verified successfully",
+                  "data": null
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login step 1 (generate OTP)",
+        "description": "Validates credentials, approval and onboarding status, then prints OTP in the terminal.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" },
+              "example": { "email": "asha@example.com", "password": "Pass@123" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "OTP sent. Please verify to complete login.",
+                  "data": null
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/verify-login-otp": {
+      "post": {
+        "summary": "Login step 2 (verify OTP)",
+        "description": "Verifies OTP and returns JWT token and role.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VerifyOtpRequest" },
+              "example": { "email": "asha@example.com", "otp": "123456" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Login successful",
+                  "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "role": "doctor"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/admin/users/{id}/approve": {
+      "patch": {
+        "summary": "Approve user login",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User approved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "User approved",
+                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/users/{id}/reject": {
+      "patch": {
+        "summary": "Reject user login",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User rejected",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "User rejected",
+                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/users/{id}/onboard": {
+      "patch": {
+        "summary": "Complete onboarding",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User onboarded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "User onboarded",
+                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "delete": {
+        "summary": "Delete user",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "User deleted",
+                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/superadmin/admins": {
+      "post": {
+        "summary": "Create admin (super admin only)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAdminRequest" },
+              "example": {
+                "name": "Admin One",
+                "age": 40,
+                "gender": "male",
+                "specialization": "Operations",
+                "email": "admin1@example.com",
+                "password": "Admin@123",
+                "confirmPassword": "Admin@123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admin created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Admin created",
+                  "data": { "id": "65f1a1c2e2a5f83a9b8c5678" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/superadmin/admins/{id}": {
+      "delete": {
+        "summary": "Delete admin (super admin only)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Admin deleted",
+                  "data": { "id": "65f1a1c2e2a5f83a9b8c5678" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "OK"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

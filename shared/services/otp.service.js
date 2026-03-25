@@ -1,19 +1,21 @@
 const OTPAuth = require("otpauth");
+const crypto = require("crypto");
 const { OTP_EXPIRY_MINUTES } = require("../utils/constants");
 
 const buildSecret = (secretValue) => {
   if (!secretValue) return null;
   if (secretValue instanceof OTPAuth.Secret) return secretValue;
 
-  if (OTPAuth.Secret.fromB32) return OTPAuth.Secret.fromB32(secretValue);
   if (OTPAuth.Secret.fromBase32) return OTPAuth.Secret.fromBase32(secretValue);
-  if (OTPAuth.Secret.fromString) return OTPAuth.Secret.fromString(secretValue);
+  if (OTPAuth.Secret.fromHex) return OTPAuth.Secret.fromHex(secretValue);
 
   return new OTPAuth.Secret({ base32: secretValue });
 };
 
 const generateOtp = () => {
-  const secret = OTPAuth.Secret.generate();
+  // OTPAuth v9 does not provide Secret.generate(), so generate random bytes manually
+  const randomBytes = crypto.randomBytes(20); // 160-bit secret
+  const secret = OTPAuth.Secret.fromHex(randomBytes.toString("hex"));
 
   const totp = new OTPAuth.TOTP({
     issuer: "HospitalToken",

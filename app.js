@@ -1,7 +1,10 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const routes = require("./routes");
 const errorMiddleware = require("./middleware/error.middleware");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger.json");
 
 const app = express();
 
@@ -11,8 +14,15 @@ app.use(express.json());
 // Enable CORS for API clients
 app.use(cors());
 
+// Serve small test frontend
+app.use(express.static("public"));
+
 // API routes
 app.use("/api", routes);
+
+// Swagger docs
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/api/docs.json", (req, res) => res.json(swaggerSpec));
 
 // 404 handler for unknown routes
 app.use((req, res) => {
