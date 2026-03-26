@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Department = require("./department.model");
+const Hospital = require("../hospital/hospital.model");
 const userRepository = require("../user/user.repository");
 
 const DEPARTMENT_ID_PREFIX = "DEP";
@@ -80,23 +81,23 @@ const createDepartment = async (payload, adminId) => {
 };
 
 const getDepartments = async () => {
-  const departments = await Department.find({}, { departmentId: 1, departmentName: 1 })
-    .sort({ departmentId: 1 })
+  const departments = await Department.find({}, { departmentName: 1 })
+    .sort({ departmentName: 1 })
     .lean();
 
   return departments.map((department) => ({
-    id: department.departmentId,
+    id: department._id,
     name: department.departmentName,
   }));
 };
 
 const validateDepartment = async (departmentId) => {
-  const trimmedDepartmentId = (departmentId || "").trim();
+  const trimmedDepartmentId = String(departmentId || "").trim();
   if (!trimmedDepartmentId) {
     throw new Error("Department ID is required");
   }
 
-  const department = await Department.findOne({ departmentId: trimmedDepartmentId });
+  const department = await findDepartmentByIdentifier(trimmedDepartmentId);
   if (!department) {
     throw new Error("Selected department does not exist");
   }
@@ -137,7 +138,9 @@ const deleteDepartment = async (identifier) => {
   }
 
   const assignedUsersCount = await userRepository.countByDepartmentId(department.departmentId);
-  if (assignedUsersCount > 0) {
+  const assignedHospitalCount = await Hospital.countDocuments({ departmentId: department._id });
+
+  if (assignedUsersCount > 0 || assignedHospitalCount > 0) {
     throw new Error("Department cannot be deleted while users are assigned to it");
   }
 

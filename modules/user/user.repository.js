@@ -1,4 +1,9 @@
 const User = require("./user.model");
+const {
+  ROLES,
+  LOGIN_STATUS,
+  ONBOARDING_STATUS,
+} = require("../../shared/utils/constants");
 
 const createUser = async (payload) => User.create(payload);
 
@@ -16,6 +21,15 @@ const countByDepartmentId = async (departmentId) => User.countDocuments({ depart
 const updateManyByDepartmentId = async (departmentId, payload) =>
   User.updateMany({ departmentId }, payload);
 
+const findApprovedDoctorByDepartmentId = async (departmentId) =>
+  User.findOne({
+    role: ROLES.DOCTOR,
+    departmentId,
+    loginStatus: LOGIN_STATUS.APPROVED,
+    onboardingStatus: ONBOARDING_STATUS.ONBOARDED,
+    isEmailVerified: true,
+  }).sort({ createdAt: 1 });
+
 module.exports = {
   createUser,
   findByEmail,
@@ -24,4 +38,5 @@ module.exports = {
   deleteById,
   countByDepartmentId,
   updateManyByDepartmentId,
+  findApprovedDoctorByDepartmentId,
 };

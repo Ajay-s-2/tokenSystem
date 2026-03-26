@@ -9,7 +9,7 @@ const createDepartment = async (req, res) => {
       res,
       "Department created",
       {
-        id: department.departmentId,
+        id: department._id,
         name: department.departmentName,
       },
       201
@@ -24,7 +24,7 @@ const getDepartments = async (req, res) => {
     const departments = await departmentService.getDepartments();
     return sendSuccess(res, "Departments fetched successfully", departments);
   } catch (error) {
-    return sendError(res, error.message, 400);
+    return sendError(res, error.message || "Internal server error", error.statusCode || 500);
   }
 };
 
@@ -33,7 +33,7 @@ const updateDepartment = async (req, res) => {
     const department = await departmentService.updateDepartment(req.params.id, req.body);
 
     return sendSuccess(res, "Department updated", {
-      id: department.departmentId,
+      id: department._id,
       name: department.departmentName,
     });
   } catch (error) {
@@ -46,7 +46,7 @@ const deleteDepartment = async (req, res) => {
     const department = await departmentService.deleteDepartment(req.params.id);
 
     return sendSuccess(res, "Department deleted", {
-      id: department.departmentId,
+      id: department._id,
       name: department.departmentName,
     });
   } catch (error) {

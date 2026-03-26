@@ -20,6 +20,10 @@
       "description": "Department dropdown and department management APIs."
     },
     {
+      "name": "Hospital Module",
+      "description": "Hospital user APIs for fetching and updating the selected department."
+    },
+    {
       "name": "Admin Module",
       "description": "Admin approval, onboarding, and user management APIs."
     },
@@ -61,8 +65,8 @@
           "specialization": { "type": "string", "example": "Cardiology" },
           "departmentId": {
             "type": "string",
-            "example": "DEP001",
-            "description": "Required when role is doctor or hospital_staff"
+            "example": "67e3a1c2e2a5f83a9b8c1234",
+            "description": "Required when role is doctor or common_user"
           },
           "email": { "type": "string", "example": "asha@example.com" },
           "password": { "type": "string", "example": "Pass@123" },
@@ -131,8 +135,28 @@
       "DepartmentItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "DEP001" },
+          "id": { "type": "string", "example": "67e3a1c2e2a5f83a9b8c1234" },
           "name": { "type": "string", "example": "Cardiology" }
+        }
+      },
+      "UpdateHospitalDepartmentRequest": {
+        "type": "object",
+        "required": ["departmentId"],
+        "properties": {
+          "departmentId": {
+            "type": "string",
+            "example": "67e3a1c2e2a5f83a9b8c1234",
+            "description": "MongoDB ObjectId of the selected department."
+          }
+        }
+      },
+      "HospitalItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "67e3a1c2e2a5f83a9b8c9999" },
+          "name": { "type": "string", "example": "Main Hospital User" },
+          "departmentId": { "type": "string", "example": "67e3a1c2e2a5f83a9b8c1234", "nullable": true },
+          "departmentName": { "type": "string", "example": "Cardiology" }
         }
       },
       "SuccessResponse": {
@@ -198,8 +222,8 @@
     "/auth/register": {
       "post": {
         "tags": ["Auth Module"],
-        "summary": "Register user (doctor / hospital_staff / admin)",
-        "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. Doctors and hospital staff must provide a valid departmentId from GET /departments. OTP is printed in the server terminal.",
+        "summary": "Register user (doctor / common_user / admin)",
+        "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. Doctors and common users must provide a valid departmentId from GET /departments. OTP is printed in the server terminal.",
         "requestBody": {
           "required": true,
           "content": {
@@ -211,7 +235,7 @@
                 "gender": "female",
                 "role": "doctor",
                 "specialization": "Cardiology",
-                "departmentId": "DEP001",
+                "departmentId": "67e3a1c2e2a5f83a9b8c1234",
                 "email": "asha@example.com",
                 "password": "Pass@123",
                 "confirmPassword": "Pass@123"
@@ -351,8 +375,8 @@
                   "success": true,
                   "message": "Departments fetched successfully",
                   "data": [
-                    { "id": "DEP001", "name": "Cardiology" },
-                    { "id": "DEP002", "name": "Neurology" }
+                    { "id": "67e3a1c2e2a5f83a9b8c1234", "name": "Cardiology" },
+                    { "id": "67e3a1c2e2a5f83a9b8c1235", "name": "Neurology" }
                   ]
                 }
               }
@@ -386,7 +410,7 @@
                   "success": true,
                   "message": "Department created",
                   "data": {
-                    "id": "DEP001",
+                    "id": "67e3a1c2e2a5f83a9b8c1234",
                     "name": "Cardiology"
                   }
                 }
@@ -435,7 +459,7 @@
                   "success": true,
                   "message": "Department updated",
                   "data": {
-                    "id": "DEP001",
+                    "id": "67e3a1c2e2a5f83a9b8c1234",
                     "name": "Advanced Cardiology"
                   }
                 }
@@ -471,8 +495,95 @@
                   "success": true,
                   "message": "Department deleted",
                   "data": {
-                    "id": "DEP001",
+                    "id": "67e3a1c2e2a5f83a9b8c1234",
                     "name": "Cardiology"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hospital/{id}": {
+      "get": {
+        "tags": ["Hospital Module"],
+        "summary": "Get hospital user details",
+        "description": "Returns hospital user details including the currently selected department.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Hospital user MongoDB ObjectId",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital user fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Hospital user fetched successfully",
+                  "data": {
+                    "id": "67e3a1c2e2a5f83a9b8c9999",
+                    "name": "Main Hospital User",
+                    "departmentId": "67e3a1c2e2a5f83a9b8c1234",
+                    "departmentName": "Cardiology"
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hospital/{id}/department": {
+      "put": {
+        "tags": ["Hospital Module"],
+        "summary": "Assign or update hospital user department",
+        "description": "Assigns a department if not set, or updates the selected department if it already exists.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Hospital user MongoDB ObjectId",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateHospitalDepartmentRequest" },
+              "example": {
+                "departmentId": "67e3a1c2e2a5f83a9b8c1234"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital department updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Hospital department updated successfully",
+                  "data": {
+                    "id": "67e3a1c2e2a5f83a9b8c9999",
+                    "name": "Main Hospital User",
+                    "departmentId": "67e3a1c2e2a5f83a9b8c1234",
+                    "departmentName": "Cardiology"
                   }
                 }
               }

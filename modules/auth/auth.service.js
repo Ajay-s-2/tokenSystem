@@ -28,7 +28,7 @@ const register = async (payload) => {
     throw new Error("Password and confirm password do not match");
   }
 
-  if (![ROLES.DOCTOR, ROLES.HOSPITAL_STAFF, ROLES.ADMIN].includes(role)) {
+  if (![ROLES.DOCTOR, ROLES.COMMON_USER, ROLES.ADMIN].includes(role)) {
     throw new Error("Invalid role selected for registration");
   }
 
@@ -37,9 +37,9 @@ const register = async (payload) => {
     departmentName: null,
   };
 
-  if ([ROLES.DOCTOR, ROLES.HOSPITAL_STAFF].includes(role)) {
+  if ([ROLES.DOCTOR, ROLES.COMMON_USER].includes(role)) {
     if (!departmentId) {
-      throw new Error("Department ID is required for doctors and hospital staff");
+      throw new Error("Department ID is required for doctors and common users");
     }
 
     const department = await departmentService.validateDepartment(departmentId);
