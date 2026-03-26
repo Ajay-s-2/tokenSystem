@@ -3,6 +3,7 @@ const { hashPassword, comparePassword } = require("../../shared/utils/password.u
 const { generateToken } = require("../../shared/utils/token.util");
 const otpService = require("../../shared/services/otp.service");
 const superAdminOtpStore = require("../../shared/services/superadmin-otp.store");
+const departmentService = require("../department/department.service");
 const userRepository = require("../user/user.repository");
 
 const register = async (payload) => {
@@ -12,6 +13,7 @@ const register = async (payload) => {
     gender,
     specialization,
     spelization,
+    departmentId,
     email,
     password,
     confirmPassword,
@@ -30,6 +32,23 @@ const register = async (payload) => {
     throw new Error("Invalid role selected for registration");
   }
 
+  let departmentData = {
+    departmentId: null,
+    departmentName: null,
+  };
+
+  if ([ROLES.DOCTOR, ROLES.HOSPITAL_STAFF].includes(role)) {
+    if (!departmentId) {
+      throw new Error("Department ID is required for doctors and hospital staff");
+    }
+
+    const department = await departmentService.validateDepartment(departmentId);
+    departmentData = {
+      departmentId: department.departmentId,
+      departmentName: department.departmentName,
+    };
+  }
+
   const existingUser = await userRepository.findByEmail(email);
   if (existingUser) {
     throw new Error("Email already registered");
@@ -46,6 +65,8 @@ const register = async (payload) => {
     email,
     password: hashedPassword,
     role,
+    departmentId: departmentData.departmentId,
+    departmentName: departmentData.departmentName,
     loginStatus: LOGIN_STATUS.PENDING,
     onboardingStatus: ONBOARDING_STATUS.NOT_ONBOARDED,
     isEmailVerified: false,

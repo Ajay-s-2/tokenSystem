@@ -11,10 +11,17 @@ const updateById = async (id, payload) =>
 
 const deleteById = async (id) => User.findByIdAndDelete(id);
 
+const countByDepartmentId = async (departmentId) => User.countDocuments({ departmentId });
+
+const updateManyByDepartmentId = async (departmentId, payload) =>
+  User.updateMany({ departmentId }, payload);
+
 module.exports = {
   createUser,
   findByEmail,
   findById,
   updateById,
   deleteById,
+  countByDepartmentId,
+  updateManyByDepartmentId,
 };

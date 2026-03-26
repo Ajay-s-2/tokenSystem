@@ -38,6 +38,11 @@
           "gender": { "type": "string", "example": "female" },
           "role": { "type": "string", "example": "doctor" },
           "specialization": { "type": "string", "example": "Cardiology" },
+          "departmentId": {
+            "type": "string",
+            "example": "DEP001",
+            "description": "Required when role is doctor or hospital_staff"
+          },
           "email": { "type": "string", "example": "asha@example.com" },
           "password": { "type": "string", "example": "Pass@123" },
           "confirmPassword": { "type": "string", "example": "Pass@123" }
@@ -78,6 +83,35 @@
           "email": { "type": "string", "example": "admin1@example.com" },
           "password": { "type": "string", "example": "Admin@123" },
           "confirmPassword": { "type": "string", "example": "Admin@123" }
+        }
+      },
+      "CreateDepartmentRequest": {
+        "type": "object",
+        "required": ["departmentName"],
+        "properties": {
+          "departmentName": {
+            "type": "string",
+            "example": "Cardiology",
+            "description": "Unique department name. Leading and trailing spaces are trimmed."
+          }
+        }
+      },
+      "UpdateDepartmentRequest": {
+        "type": "object",
+        "required": ["departmentName"],
+        "properties": {
+          "departmentName": {
+            "type": "string",
+            "example": "Advanced Cardiology",
+            "description": "Updated unique department name."
+          }
+        }
+      },
+      "DepartmentItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "DEP001" },
+          "name": { "type": "string", "example": "Cardiology" }
         }
       },
       "SuccessResponse": {
@@ -143,7 +177,7 @@
     "/auth/register": {
       "post": {
         "summary": "Register user (doctor / hospital_staff / admin)",
-        "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. OTP is printed in the server terminal.",
+        "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. Doctors and hospital staff must provide a valid departmentId from GET /departments. OTP is printed in the server terminal.",
         "requestBody": {
           "required": true,
           "content": {
@@ -155,6 +189,7 @@
                 "gender": "female",
                 "role": "doctor",
                 "specialization": "Cardiology",
+                "departmentId": "DEP001",
                 "email": "asha@example.com",
                 "password": "Pass@123",
                 "confirmPassword": "Pass@123"
@@ -272,6 +307,150 @@
               }
             }
           },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/departments": {
+      "get": {
+        "summary": "Get all departments",
+        "description": "Returns department values for dropdowns and other reusable modules.",
+        "responses": {
+          "200": {
+            "description": "Departments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Departments fetched successfully",
+                  "data": [
+                    { "id": "DEP001", "name": "Cardiology" },
+                    { "id": "DEP002", "name": "Neurology" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create department (super admin only)",
+        "description": "Creates a department with a generated departmentId such as DEP001.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateDepartmentRequest" },
+              "example": {
+                "departmentName": "Cardiology"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Department created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Department created",
+                  "data": {
+                    "id": "DEP001",
+                    "name": "Cardiology"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/departments/{id}": {
+      "put": {
+        "summary": "Update department (super admin only)",
+        "description": "Updates the department name. Existing users mapped to the department are updated with the latest departmentName.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Department ObjectId or departmentId such as DEP001",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateDepartmentRequest" },
+              "example": {
+                "departmentName": "Advanced Cardiology"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Department updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Department updated",
+                  "data": {
+                    "id": "DEP001",
+                    "name": "Advanced Cardiology"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      },
+      "delete": {
+        "summary": "Delete department (super admin only)",
+        "description": "Deletes a department only when no users are assigned to it.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Department ObjectId or departmentId such as DEP001",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Department deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "example": {
+                  "success": true,
+                  "message": "Department deleted",
+                  "data": {
+                    "id": "DEP001",
+                    "name": "Cardiology"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
           "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }

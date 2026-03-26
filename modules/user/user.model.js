@@ -10,6 +10,8 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: Object.values(ROLES), required: true },
+    departmentId: { type: String, trim: true, default: null },
+    departmentName: { type: String, trim: true, default: null },
     loginStatus: {
       type: String,
       enum: Object.values(LOGIN_STATUS),
