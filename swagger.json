@@ -2,13 +2,34 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Hospital Token Booking API",
-    "version": "1.0.0",
-    "description": "Authentication, admin, and super admin APIs with OTP verification."
+    "version": "1.0.0"
   },
   "servers": [
     {
       "url": "http://localhost:4000/api",
       "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth Module",
+      "description": "Authentication and OTP verification APIs."
+    },
+    {
+      "name": "Department Selection",
+      "description": "Department dropdown and department management APIs."
+    },
+    {
+      "name": "Admin Module",
+      "description": "Admin approval, onboarding, and user management APIs."
+    },
+    {
+      "name": "Super Admin Module",
+      "description": "Super admin APIs for managing admin users."
+    },
+    {
+      "name": "System",
+      "description": "Utility and health-check APIs."
     }
   ],
   "components": {
@@ -176,6 +197,7 @@
   "paths": {
     "/auth/register": {
       "post": {
+        "tags": ["Auth Module"],
         "summary": "Register user (doctor / hospital_staff / admin)",
         "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. Doctors and hospital staff must provide a valid departmentId from GET /departments. OTP is printed in the server terminal.",
         "requestBody": {
@@ -217,6 +239,7 @@
     },
     "/auth/verify-register-otp": {
       "post": {
+        "tags": ["Auth Module"],
         "summary": "Verify registration OTP",
         "description": "Marks the user's email as verified.",
         "requestBody": {
@@ -248,6 +271,7 @@
     },
     "/auth/login": {
       "post": {
+        "tags": ["Auth Module"],
         "summary": "Login step 1 (generate OTP)",
         "description": "Validates credentials, approval and onboarding status, then prints OTP in the terminal.",
         "requestBody": {
@@ -279,6 +303,7 @@
     },
     "/auth/verify-login-otp": {
       "post": {
+        "tags": ["Auth Module"],
         "summary": "Login step 2 (verify OTP)",
         "description": "Verifies OTP and returns JWT token and role.",
         "requestBody": {
@@ -313,6 +338,7 @@
     },
     "/departments": {
       "get": {
+        "tags": ["Department Selection"],
         "summary": "Get all departments",
         "description": "Returns department values for dropdowns and other reusable modules.",
         "responses": {
@@ -335,6 +361,7 @@
         }
       },
       "post": {
+        "tags": ["Department Selection"],
         "summary": "Create department (super admin only)",
         "description": "Creates a department with a generated departmentId such as DEP001.",
         "security": [{ "bearerAuth": [] }],
@@ -374,6 +401,7 @@
     },
     "/departments/{id}": {
       "put": {
+        "tags": ["Department Selection"],
         "summary": "Update department (super admin only)",
         "description": "Updates the department name. Existing users mapped to the department are updated with the latest departmentName.",
         "security": [{ "bearerAuth": [] }],
@@ -420,6 +448,7 @@
         }
       },
       "delete": {
+        "tags": ["Department Selection"],
         "summary": "Delete department (super admin only)",
         "description": "Deletes a department only when no users are assigned to it.",
         "security": [{ "bearerAuth": [] }],
@@ -457,6 +486,7 @@
     },
     "/admin/users/{id}/approve": {
       "patch": {
+        "tags": ["Admin Module"],
         "summary": "Approve user login",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
@@ -488,6 +518,7 @@
     },
     "/admin/users/{id}/reject": {
       "patch": {
+        "tags": ["Admin Module"],
         "summary": "Reject user login",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
@@ -519,6 +550,7 @@
     },
     "/admin/users/{id}/onboard": {
       "patch": {
+        "tags": ["Admin Module"],
         "summary": "Complete onboarding",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
@@ -550,6 +582,7 @@
     },
     "/admin/users/{id}": {
       "delete": {
+        "tags": ["Admin Module"],
         "summary": "Delete user",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
@@ -581,6 +614,7 @@
     },
     "/superadmin/admins": {
       "post": {
+        "tags": ["Super Admin Module"],
         "summary": "Create admin (super admin only)",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
@@ -622,6 +656,7 @@
     },
     "/superadmin/admins/{id}": {
       "delete": {
+        "tags": ["Super Admin Module"],
         "summary": "Delete admin (super admin only)",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
@@ -653,6 +688,7 @@
     },
     "/health": {
       "get": {
+        "tags": ["System"],
         "summary": "Health check",
         "responses": {
           "200": {

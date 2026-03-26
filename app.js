@@ -14,8 +14,7 @@ app.use(express.json());
 // Enable CORS for API clients
 app.use(cors());
 
-// Serve small test frontend
-app.use(express.static("public"));
+
 
 // API routes
 app.use("/api", routes);
