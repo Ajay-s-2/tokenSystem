@@ -11,6 +11,8 @@ const findByEmail = async (email) => User.findOne({ email: email.toLowerCase() }
 
 const findById = async (id) => User.findById(id);
 
+const findOne = async (query) => User.findOne(query);
+
 const updateById = async (id, payload) =>
   User.findByIdAndUpdate(id, payload, { new: true });
 
@@ -34,6 +36,7 @@ module.exports = {
   createUser,
   findByEmail,
   findById,
+  findOne,
   updateById,
   deleteById,
   countByDepartmentId,

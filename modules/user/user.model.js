@@ -1,12 +1,16 @@
 const mongoose = require("mongoose");
-const { ROLES, LOGIN_STATUS, ONBOARDING_STATUS } = require("../../shared/utils/constants");
+const {
+  ROLES,
+  LOGIN_STATUS,
+  ONBOARDING_STATUS,
+} = require("../../shared/utils/constants");
 
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    age: { type: Number, required: true, min: 0 },
-    gender: { type: String, required: true, trim: true },
-    specialization: { type: String, required: true, trim: true },
+    age: { type: Number, min: 0, default: null },
+    gender: { type: String, trim: true, default: null },
+    specialization: { type: String, trim: true, default: null },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: Object.values(ROLES), required: true },

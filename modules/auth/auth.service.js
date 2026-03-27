@@ -1,6 +1,7 @@
 const { LOGIN_STATUS, ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { hashPassword, comparePassword } = require("../../shared/utils/password.util");
 const { generateToken } = require("../../shared/utils/token.util");
+const { createHttpError } = require("../../shared/utils/error.util");
 const otpService = require("../../shared/services/otp.service");
 const superAdminOtpStore = require("../../shared/services/superadmin-otp.store");
 const departmentService = require("../department/department.service");
@@ -20,16 +21,16 @@ const register = async (payload) => {
     role,
   } = payload;
 
-  if (!name || !age || !gender || !(specialization || spelization) || !email || !password) {
-    throw new Error("Missing required registration fields");
+  if (!name || !email || !password) {
+    throw createHttpError(400, "Missing required registration fields");
   }
 
   if (password !== confirmPassword) {
-    throw new Error("Password and confirm password do not match");
+    throw createHttpError(400, "Password and confirm password do not match");
   }
 
-  if (![ROLES.DOCTOR, ROLES.COMMON_USER, ROLES.ADMIN].includes(role)) {
-    throw new Error("Invalid role selected for registration");
+  if (![ROLES.DOCTOR, ROLES.HOSPITAL, ROLES.COMMON_USER, ROLES.ADMIN].includes(role)) {
+    throw createHttpError(400, "Invalid role selected for registration");
   }
 
   let departmentData = {
@@ -37,11 +38,24 @@ const register = async (payload) => {
     departmentName: null,
   };
 
-  if ([ROLES.DOCTOR, ROLES.COMMON_USER].includes(role)) {
-    if (!departmentId) {
-      throw new Error("Department ID is required for doctors and common users");
-    }
+  const normalizedSpecialization = specialization || spelization || null;
 
+  if (role === ROLES.ADMIN) {
+    if (!age || !gender || !normalizedSpecialization) {
+      throw createHttpError(400, "Admin registration requires age, gender and specialization");
+    }
+  }
+
+  if (role === ROLES.COMMON_USER) {
+    if (!age || !gender || !normalizedSpecialization || !departmentId) {
+      throw createHttpError(
+        400,
+        "Common user registration requires age, gender, specialization and department ID"
+      );
+    }
+  }
+
+  if ([ROLES.DOCTOR, ROLES.COMMON_USER].includes(role) && departmentId) {
     const department = await departmentService.validateDepartment(departmentId);
     departmentData = {
       departmentId: department.departmentId,
@@ -51,17 +65,16 @@ const register = async (payload) => {
 
   const existingUser = await userRepository.findByEmail(email);
   if (existingUser) {
-    throw new Error("Email already registered");
+    throw createHttpError(409, "Email already registered");
   }
 
-  // Hash password before saving
   const hashedPassword = await hashPassword(password);
 
   const user = await userRepository.createUser({
     name,
-    age,
-    gender,
-    specialization: specialization || spelization,
+    age: age || null,
+    gender: gender || null,
+    specialization: normalizedSpecialization,
     email,
     password: hashedPassword,
     role,
@@ -104,18 +117,17 @@ const validateSuperAdminPassword = (password) => {
 
 const verifyRegisterOtp = async ({ email, otp }) => {
   if (!email || !otp) {
-    throw new Error("Email and OTP are required");
+    throw createHttpError(400, "Email and OTP are required");
   }
 
   const user = await userRepository.findByEmail(email);
   if (!user) {
-    throw new Error("User not found");
+    throw createHttpError(404, "User not found");
   }
 
-  // Validate OTP and expiry
   const { valid, reason } = otpService.verifyOtp(otp, user.otpSecret, user.otpExpiresAt);
   if (!valid) {
-    throw new Error(reason || "Invalid OTP");
+    throw createHttpError(400, reason || "Invalid OTP");
   }
 
   await userRepository.updateById(user._id, {
@@ -129,13 +141,12 @@ const verifyRegisterOtp = async ({ email, otp }) => {
 
 const login = async ({ email, password }) => {
   if (!email || !password) {
-    throw new Error("Email and password are required");
+    throw createHttpError(400, "Email and password are required");
   }
 
-  // Super admin login: validate credentials from .env (no DB lookup)
   if (isEnvSuperAdmin(email)) {
     if (!validateSuperAdminPassword(password)) {
-      throw new Error("Invalid credentials");
+      throw createHttpError(401, "Invalid credentials");
     }
 
     const { token, secret, expiresAt } = otpService.generateOtp();
@@ -147,27 +158,26 @@ const login = async ({ email, password }) => {
 
   const user = await userRepository.findByEmail(email);
   if (!user) {
-    throw new Error("Invalid credentials");
+    throw createHttpError(401, "Invalid credentials");
   }
 
   const passwordMatch = await comparePassword(password, user.password);
   if (!passwordMatch) {
-    throw new Error("Invalid credentials");
+    throw createHttpError(401, "Invalid credentials");
   }
 
   if (user.loginStatus !== LOGIN_STATUS.APPROVED) {
-    throw new Error("Login not approved yet");
-  }
-
-  if (user.onboardingStatus !== ONBOARDING_STATUS.ONBOARDED) {
-    throw new Error("Onboarding not completed yet");
+    const approvalMessage =
+      user.loginStatus === LOGIN_STATUS.REJECTED
+        ? "Your account has been rejected by admin"
+        : "Your account is still pending admin approval";
+    throw createHttpError(403, approvalMessage);
   }
 
   if (!user.isEmailVerified) {
-    throw new Error("Email is not verified");
+    throw createHttpError(403, "Email is not verified");
   }
 
-  // Generate OTP for login verification
   const { token, secret, expiresAt } = otpService.generateOtp();
 
   await userRepository.updateById(user._id, {
@@ -182,15 +192,14 @@ const login = async ({ email, password }) => {
 
 const verifyLoginOtp = async ({ email, otp }) => {
   if (!email || !otp) {
-    throw new Error("Email and OTP are required");
+    throw createHttpError(400, "Email and OTP are required");
   }
 
-  // Super admin OTP verification using in-memory store
   if (isEnvSuperAdmin(email)) {
     const otpRecord = superAdminOtpStore.getOtp(email);
     const { valid, reason } = otpService.verifyOtp(otp, otpRecord?.secret, otpRecord?.expiresAt);
     if (!valid) {
-      throw new Error(reason || "Invalid OTP");
+      throw createHttpError(400, reason || "Invalid OTP");
     }
 
     superAdminOtpStore.clearOtp(email);
@@ -201,21 +210,16 @@ const verifyLoginOtp = async ({ email, otp }) => {
 
   const user = await userRepository.findByEmail(email);
   if (!user) {
-    throw new Error("User not found");
+    throw createHttpError(404, "User not found");
   }
 
   if (user.loginStatus !== LOGIN_STATUS.APPROVED) {
-    throw new Error("Login not approved yet");
+    throw createHttpError(403, "Only approved users can complete login");
   }
 
-  if (user.onboardingStatus !== ONBOARDING_STATUS.ONBOARDED) {
-    throw new Error("Onboarding not completed yet");
-  }
-
-  // Validate OTP and expiry
   const { valid, reason } = otpService.verifyOtp(otp, user.otpSecret, user.otpExpiresAt);
   if (!valid) {
-    throw new Error(reason || "Invalid OTP");
+    throw createHttpError(400, reason || "Invalid OTP");
   }
 
   await userRepository.updateById(user._id, {
@@ -223,8 +227,7 @@ const verifyLoginOtp = async ({ email, otp }) => {
     otpExpiresAt: null,
   });
 
-  // Issue JWT after OTP verification
-  const token = generateToken({ id: user._id, role: user.role });
+  const token = generateToken({ id: user._id, role: user.role, email: user.email });
 
   return { token, role: user.role };
 };

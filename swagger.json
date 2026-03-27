@@ -1,8 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Hospital Token Booking API",
-    "version": "1.0.0"
+    "title": "Hospital-Doctor Platform API",
+    "version": "2.0.0",
+    "description": "Production-ready backend APIs for authentication, doctor and hospital profile management, approval workflows, doctor-hospital mapping, subscriptions, department management, and admin operations."
   },
   "servers": [
     {
@@ -17,15 +18,19 @@
     },
     {
       "name": "Department Selection",
-      "description": "Department dropdown and department management APIs."
+      "description": "Department listing and department management APIs."
+    },
+    {
+      "name": "Doctor Module",
+      "description": "Doctor profile creation, retrieval, and hospital selection APIs."
     },
     {
       "name": "Hospital Module",
-      "description": "Hospital user APIs for fetching and updating the selected department."
+      "description": "Hospital profile, pending doctor approvals, and subscription APIs."
     },
     {
       "name": "Admin Module",
-      "description": "Admin approval, onboarding, and user management APIs."
+      "description": "Admin approval, filtering, pagination, and subscription management APIs."
     },
     {
       "name": "Super Admin Module",
@@ -45,48 +50,158 @@
       }
     },
     "schemas": {
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "OK"
+          },
+          "data": {
+            "nullable": true
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "errors": {
+            "nullable": true
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Validation failed"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "example": "status"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Status must be pending, approved or rejected"
+                }
+              }
+            }
+          }
+        }
+      },
       "RegisterRequest": {
         "type": "object",
         "required": [
           "name",
-          "age",
-          "gender",
-          "role",
-          "specialization",
           "email",
           "password",
-          "confirmPassword"
+          "confirmPassword",
+          "role"
         ],
         "properties": {
-          "name": { "type": "string", "example": "Dr Asha" },
-          "age": { "type": "number", "example": 32 },
-          "gender": { "type": "string", "example": "female" },
-          "role": { "type": "string", "example": "doctor" },
-          "specialization": { "type": "string", "example": "Cardiology" },
+          "name": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "age": {
+            "type": "number",
+            "nullable": true,
+            "example": 32
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "example": "female"
+          },
+          "specialization": {
+            "type": "string",
+            "nullable": true,
+            "example": "Cardiology"
+          },
           "departmentId": {
             "type": "string",
+            "nullable": true,
             "example": "67e3a1c2e2a5f83a9b8c1234",
-            "description": "Required when role is doctor or common_user"
+            "description": "Required for common_user registration. Optional in current doctor registration flow."
           },
-          "email": { "type": "string", "example": "asha@example.com" },
-          "password": { "type": "string", "example": "Pass@123" },
-          "confirmPassword": { "type": "string", "example": "Pass@123" }
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "Pass@123"
+          },
+          "confirmPassword": {
+            "type": "string",
+            "example": "Pass@123"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "doctor",
+              "hospital",
+              "common_user",
+              "admin"
+            ],
+            "example": "doctor"
+          }
         }
       },
       "VerifyOtpRequest": {
         "type": "object",
-        "required": ["email", "otp"],
+        "required": [
+          "email",
+          "otp"
+        ],
         "properties": {
-          "email": { "type": "string", "example": "asha@example.com" },
-          "otp": { "type": "string", "example": "123456" }
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
+          },
+          "otp": {
+            "type": "string",
+            "example": "123456"
+          }
         }
       },
       "LoginRequest": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
-          "email": { "type": "string", "example": "asha@example.com" },
-          "password": { "type": "string", "example": "Pass@123" }
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "Pass@123"
+          }
         }
       },
       "CreateAdminRequest": {
@@ -101,78 +216,563 @@
           "confirmPassword"
         ],
         "properties": {
-          "name": { "type": "string", "example": "Admin One" },
-          "age": { "type": "number", "example": 40 },
-          "gender": { "type": "string", "example": "male" },
-          "specialization": { "type": "string", "example": "Operations" },
-          "email": { "type": "string", "example": "admin1@example.com" },
-          "password": { "type": "string", "example": "Admin@123" },
-          "confirmPassword": { "type": "string", "example": "Admin@123" }
+          "name": {
+            "type": "string",
+            "example": "Admin One"
+          },
+          "age": {
+            "type": "number",
+            "example": 40
+          },
+          "gender": {
+            "type": "string",
+            "example": "male"
+          },
+          "specialization": {
+            "type": "string",
+            "example": "Operations"
+          },
+          "email": {
+            "type": "string",
+            "example": "admin1@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "Admin@123"
+          },
+          "confirmPassword": {
+            "type": "string",
+            "example": "Admin@123"
+          }
         }
       },
       "CreateDepartmentRequest": {
         "type": "object",
-        "required": ["departmentName"],
+        "required": [
+          "departmentName"
+        ],
         "properties": {
           "departmentName": {
             "type": "string",
-            "example": "Cardiology",
-            "description": "Unique department name. Leading and trailing spaces are trimmed."
+            "example": "Cardiology"
           }
         }
       },
       "UpdateDepartmentRequest": {
         "type": "object",
-        "required": ["departmentName"],
+        "required": [
+          "departmentName"
+        ],
         "properties": {
           "departmentName": {
             "type": "string",
-            "example": "Advanced Cardiology",
-            "description": "Updated unique department name."
+            "example": "Advanced Cardiology"
           }
         }
       },
       "DepartmentItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "67e3a1c2e2a5f83a9b8c1234" },
-          "name": { "type": "string", "example": "Cardiology" }
+          "id": {
+            "type": "string",
+            "example": "67e3a1c2e2a5f83a9b8c1234"
+          },
+          "name": {
+            "type": "string",
+            "example": "Cardiology"
+          }
         }
       },
-      "UpdateHospitalDepartmentRequest": {
+      "HospitalSummary": {
         "type": "object",
-        "required": ["departmentId"],
         "properties": {
-          "departmentId": {
+          "id": {
             "type": "string",
-            "example": "67e3a1c2e2a5f83a9b8c1234",
-            "description": "MongoDB ObjectId of the selected department."
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "name": {
+            "type": "string",
+            "example": "Metro Care Hospital"
+          },
+          "email": {
+            "type": "string",
+            "example": "metro@example.com"
+          },
+          "location": {
+            "type": "string",
+            "example": "Bengaluru"
+          }
+        }
+      },
+      "DoctorSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "userId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df01"
+          },
+          "name": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9876543210"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "status": {
+            "type": "string",
+            "example": "approved"
+          }
+        }
+      },
+      "CreateDoctorRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "gender",
+          "dob",
+          "blood_group",
+          "phone",
+          "department"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "gender": {
+            "type": "string",
+            "example": "female"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "example": "1990-04-12"
+          },
+          "blood_group": {
+            "type": "string",
+            "example": "O+"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9876543210"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          }
+        }
+      },
+      "DoctorItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "userId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df01"
+          },
+          "name": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "gender": {
+            "type": "string",
+            "example": "female"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date-time",
+            "example": "1990-04-12T00:00:00.000Z"
+          },
+          "blood_group": {
+            "type": "string",
+            "example": "O+"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9876543210"
+          },
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "approved"
+          },
+          "selected_hospitals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HospitalSummary"
+            }
+          },
+          "approved_hospitals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HospitalSummary"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SelectHospitalRequest": {
+        "type": "object",
+        "required": [
+          "hospitalId"
+        ],
+        "properties": {
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          }
+        }
+      },
+      "CreateHospitalRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "location",
+          "phone",
+          "departments"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Metro Care Hospital"
+          },
+          "location": {
+            "type": "string",
+            "example": "Bengaluru"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9988776655"
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Cardiology",
+              "Orthopedics",
+              "Neurology"
+            ]
           }
         }
       },
       "HospitalItem": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "67e3a1c2e2a5f83a9b8c9999" },
-          "name": { "type": "string", "example": "Main Hospital User" },
-          "departmentId": { "type": "string", "example": "67e3a1c2e2a5f83a9b8c1234", "nullable": true },
-          "departmentName": { "type": "string", "example": "Cardiology" }
+          "id": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "userId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df10"
+          },
+          "name": {
+            "type": "string",
+            "example": "Metro Care Hospital"
+          },
+          "location": {
+            "type": "string",
+            "example": "Bengaluru"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9988776655"
+          },
+          "email": {
+            "type": "string",
+            "example": "metro@example.com"
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "approved"
+          },
+          "subscription_amount": {
+            "type": "number",
+            "nullable": true,
+            "example": 1200
+          },
+          "departmentId": {
+            "type": "string",
+            "nullable": true,
+            "example": "67e3a1c2e2a5f83a9b8c1234"
+          },
+          "departmentName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Cardiology"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
-      "SuccessResponse": {
+      "UpdateHospitalDepartmentRequest": {
         "type": "object",
+        "required": [
+          "departmentId"
+        ],
         "properties": {
-          "success": { "type": "boolean", "example": true },
-          "message": { "type": "string", "example": "OK" },
-          "data": { "type": "object", "nullable": true }
+          "departmentId": {
+            "type": "string",
+            "example": "67e3a1c2e2a5f83a9b8c1234"
+          }
         }
       },
-      "ErrorResponse": {
+      "HospitalDoctorActionRequest": {
+        "type": "object",
+        "required": [
+          "doctorId"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          }
+        }
+      },
+      "PendingDoctorsResponseData": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean", "example": false },
-          "message": { "type": "string", "example": "Validation error" },
-          "errors": { "type": "object", "nullable": true }
+          "hospital": {
+            "$ref": "#/components/schemas/HospitalItem"
+          },
+          "doctors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DoctorSummary"
+            }
+          }
+        }
+      },
+      "StatusUpdateRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "example": "approved"
+          }
+        }
+      },
+      "AdminEntityItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "userId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df01"
+          },
+          "profileId": {
+            "type": "string",
+            "nullable": true,
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "name": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "doctor"
+          },
+          "status": {
+            "type": "string",
+            "example": "pending"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "example": "+91-9876543210"
+          },
+          "department": {
+            "type": "string",
+            "nullable": true,
+            "example": "Cardiology"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "Bengaluru"
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "subscription_amount": {
+            "type": "number",
+            "nullable": true,
+            "example": 1200
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "example": 10
+          },
+          "total": {
+            "type": "number",
+            "example": 25
+          },
+          "totalPages": {
+            "type": "number",
+            "example": 3
+          }
+        }
+      },
+      "AdminListResponseData": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminEntityItem"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "DefaultSubscriptionRequest": {
+        "type": "object",
+        "required": [
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 500
+          }
+        }
+      },
+      "HospitalSubscriptionOverrideRequest": {
+        "type": "object",
+        "required": [
+          "hospitalId",
+          "amount"
+        ],
+        "properties": {
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "amount": {
+            "type": "number",
+            "example": 1200
+          }
+        }
+      },
+      "SubscriptionItem": {
+        "type": "object",
+        "properties": {
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "hospitalName": {
+            "type": "string",
+            "example": "Metro Care Hospital"
+          },
+          "amount": {
+            "type": "number",
+            "example": 1200
+          },
+          "currency": {
+            "type": "string",
+            "example": "INR"
+          },
+          "interval": {
+            "type": "string",
+            "example": "month"
+          },
+          "source": {
+            "type": "string",
+            "example": "hospital_override"
+          }
         }
       }
     },
@@ -181,7 +781,9 @@
         "description": "Unauthorized",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
             "example": {
               "success": false,
               "message": "Invalid or expired token",
@@ -194,7 +796,9 @@
         "description": "Forbidden",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
             "example": {
               "success": false,
               "message": "Forbidden: insufficient permissions",
@@ -207,10 +811,37 @@
         "description": "Bad request",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
             "example": {
               "success": false,
               "message": "Missing required fields",
+              "errors": null
+            }
+          }
+        }
+      },
+      "ValidationFailed": {
+        "description": "Validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidationErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "message": "Resource not found",
               "errors": null
             }
           }
@@ -221,24 +852,37 @@
   "paths": {
     "/auth/register": {
       "post": {
-        "tags": ["Auth Module"],
-        "summary": "Register user (doctor / common_user / admin)",
-        "description": "Creates a user with loginStatus=PENDING and onboardingStatus=NOT_ONBOARDED. Doctors and common users must provide a valid departmentId from GET /departments. OTP is printed in the server terminal.",
+        "tags": [
+          "Auth Module"
+        ],
+        "summary": "Register user",
+        "description": "Registers a doctor, hospital, common user, or admin in the existing auth flow. All new accounts start with pending approval. OTP is printed in the server terminal for verification.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/RegisterRequest" },
-              "example": {
-                "name": "Dr Asha",
-                "age": 32,
-                "gender": "female",
-                "role": "doctor",
-                "specialization": "Cardiology",
-                "departmentId": "67e3a1c2e2a5f83a9b8c1234",
-                "email": "asha@example.com",
-                "password": "Pass@123",
-                "confirmPassword": "Pass@123"
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "examples": {
+                "doctor": {
+                  "value": {
+                    "name": "Dr Priya Sharma",
+                    "email": "priya@example.com",
+                    "password": "Pass@123",
+                    "confirmPassword": "Pass@123",
+                    "role": "doctor"
+                  }
+                },
+                "hospital": {
+                  "value": {
+                    "name": "Metro Care Hospital",
+                    "email": "metro@example.com",
+                    "password": "Pass@123",
+                    "confirmPassword": "Pass@123",
+                    "role": "hospital"
+                  }
+                }
               }
             }
           }
@@ -248,30 +892,56 @@
             "description": "User registered",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
                   "message": "User registered. Please verify OTP.",
-                  "data": { "userId": "65f1a1c2e2a5f83a9b8c1234" }
+                  "data": {
+                    "userId": "67f0b2a8360d88b6e145df01"
+                  }
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Email already registered",
+                  "errors": null
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
         }
       }
     },
     "/auth/verify-register-otp": {
       "post": {
-        "tags": ["Auth Module"],
+        "tags": [
+          "Auth Module"
+        ],
         "summary": "Verify registration OTP",
-        "description": "Marks the user's email as verified.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/VerifyOtpRequest" },
-              "example": { "email": "asha@example.com", "otp": "123456" }
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpRequest"
+              }
             }
           }
         },
@@ -280,7 +950,9 @@
             "description": "OTP verified",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
                   "message": "Email verified successfully",
@@ -289,30 +961,43 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
         }
       }
     },
     "/auth/login": {
       "post": {
-        "tags": ["Auth Module"],
-        "summary": "Login step 1 (generate OTP)",
-        "description": "Validates credentials, approval and onboarding status, then prints OTP in the terminal.",
+        "tags": [
+          "Auth Module"
+        ],
+        "summary": "Login step 1",
+        "description": "Validates email and password and blocks users whose approval status is not approved. On success, OTP is generated for login verification.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoginRequest" },
-              "example": { "email": "asha@example.com", "password": "Pass@123" }
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OTP sent",
+            "description": "OTP generated",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
                   "message": "OTP sent. Please verify to complete login.",
@@ -321,21 +1006,44 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "403": {
+            "description": "Approval blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Your account is still pending admin approval",
+                  "errors": null
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
         }
       }
     },
     "/auth/verify-login-otp": {
       "post": {
-        "tags": ["Auth Module"],
-        "summary": "Login step 2 (verify OTP)",
-        "description": "Verifies OTP and returns JWT token and role.",
+        "tags": [
+          "Auth Module"
+        ],
+        "summary": "Login step 2",
+        "description": "Verifies login OTP and returns a JWT token.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/VerifyOtpRequest" },
-              "example": { "email": "asha@example.com", "otp": "123456" }
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpRequest"
+              }
             }
           }
         },
@@ -344,7 +1052,9 @@
             "description": "Login successful",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
                   "message": "Login successful",
@@ -356,27 +1066,47 @@
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
         }
       }
     },
     "/departments": {
       "get": {
-        "tags": ["Department Selection"],
+        "tags": [
+          "Department Selection"
+        ],
         "summary": "Get all departments",
-        "description": "Returns department values for dropdowns and other reusable modules.",
         "responses": {
           "200": {
             "description": "Departments fetched successfully",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
                   "message": "Departments fetched successfully",
                   "data": [
-                    { "id": "67e3a1c2e2a5f83a9b8c1234", "name": "Cardiology" },
-                    { "id": "67e3a1c2e2a5f83a9b8c1235", "name": "Neurology" }
+                    {
+                      "id": "67e3a1c2e2a5f83a9b8c1234",
+                      "name": "Cardiology"
+                    },
+                    {
+                      "id": "67e3a1c2e2a5f83a9b8c1235",
+                      "name": "Neurology"
+                    }
                   ]
                 }
               }
@@ -385,428 +1115,1365 @@
         }
       },
       "post": {
-        "tags": ["Department Selection"],
-        "summary": "Create department (super admin only)",
-        "description": "Creates a department with a generated departmentId such as DEP001.",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Department Selection"
+        ],
+        "summary": "Create department",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateDepartmentRequest" },
-              "example": {
-                "departmentName": "Cardiology"
+              "schema": {
+                "$ref": "#/components/schemas/CreateDepartmentRequest"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Department created",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "Department created",
-                  "data": {
-                    "id": "67e3a1c2e2a5f83a9b8c1234",
-                    "name": "Cardiology"
-                  }
-                }
-              }
-            }
+            "description": "Department created"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
         }
       }
     },
     "/departments/{id}": {
       "put": {
-        "tags": ["Department Selection"],
-        "summary": "Update department (super admin only)",
-        "description": "Updates the department name. Existing users mapped to the department are updated with the latest departmentName.",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Department Selection"
+        ],
+        "summary": "Update department",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "description": "Department ObjectId or departmentId such as DEP001",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UpdateDepartmentRequest" },
-              "example": {
-                "departmentName": "Advanced Cardiology"
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDepartmentRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Department updated",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "Department updated",
-                  "data": {
-                    "id": "67e3a1c2e2a5f83a9b8c1234",
-                    "name": "Advanced Cardiology"
-                  }
-                }
-              }
-            }
+            "description": "Department updated"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
         }
       },
       "delete": {
-        "tags": ["Department Selection"],
-        "summary": "Delete department (super admin only)",
-        "description": "Deletes a department only when no users are assigned to it.",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Department Selection"
+        ],
+        "summary": "Delete department",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "description": "Department ObjectId or departmentId such as DEP001",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Department deleted",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "Department deleted",
-                  "data": {
-                    "id": "67e3a1c2e2a5f83a9b8c1234",
-                    "name": "Cardiology"
-                  }
-                }
-              }
-            }
+            "description": "Department deleted"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
         }
       }
     },
-    "/hospital/{id}": {
-      "get": {
-        "tags": ["Hospital Module"],
-        "summary": "Get hospital user details",
-        "description": "Returns hospital user details including the currently selected department.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Hospital user MongoDB ObjectId",
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Hospital user fetched successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "Hospital user fetched successfully",
-                  "data": {
-                    "id": "67e3a1c2e2a5f83a9b8c9999",
-                    "name": "Main Hospital User",
-                    "departmentId": "67e3a1c2e2a5f83a9b8c1234",
-                    "departmentName": "Cardiology"
-                  }
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" }
-        }
-      }
-    },
-    "/hospital/{id}/department": {
-      "put": {
-        "tags": ["Hospital Module"],
-        "summary": "Assign or update hospital user department",
-        "description": "Assigns a department if not set, or updates the selected department if it already exists.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Hospital user MongoDB ObjectId",
-            "schema": { "type": "string" }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/UpdateHospitalDepartmentRequest" },
-              "example": {
-                "departmentId": "67e3a1c2e2a5f83a9b8c1234"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Hospital department updated successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "Hospital department updated successfully",
-                  "data": {
-                    "id": "67e3a1c2e2a5f83a9b8c9999",
-                    "name": "Main Hospital User",
-                    "departmentId": "67e3a1c2e2a5f83a9b8c1234",
-                    "departmentName": "Cardiology"
-                  }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "400": { "$ref": "#/components/responses/BadRequest" }
-        }
-      }
-    },
-    "/admin/users/{id}/approve": {
-      "patch": {
-        "tags": ["Admin Module"],
-        "summary": "Approve user login",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User approved",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "User approved",
-                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      }
-    },
-    "/admin/users/{id}/reject": {
-      "patch": {
-        "tags": ["Admin Module"],
-        "summary": "Reject user login",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User rejected",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "User rejected",
-                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      }
-    },
-    "/admin/users/{id}/onboard": {
-      "patch": {
-        "tags": ["Admin Module"],
-        "summary": "Complete onboarding",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User onboarded",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "User onboarded",
-                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      }
-    },
-    "/admin/users/{id}": {
-      "delete": {
-        "tags": ["Admin Module"],
-        "summary": "Delete user",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User deleted",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
-                "example": {
-                  "success": true,
-                  "message": "User deleted",
-                  "data": { "id": "65f1a1c2e2a5f83a9b8c1234" }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
-        }
-      }
-    },
-    "/superadmin/admins": {
+    "/doctors": {
       "post": {
-        "tags": ["Super Admin Module"],
-        "summary": "Create admin (super admin only)",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Doctor Module"
+        ],
+        "summary": "Create doctor profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateAdminRequest" },
-              "example": {
-                "name": "Admin One",
-                "age": 40,
-                "gender": "male",
-                "specialization": "Operations",
-                "email": "admin1@example.com",
-                "password": "Admin@123",
-                "confirmPassword": "Admin@123"
+              "schema": {
+                "$ref": "#/components/schemas/CreateDoctorRequest"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Admin created",
+            "description": "Doctor profile created",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
-                  "message": "Admin created",
-                  "data": { "id": "65f1a1c2e2a5f83a9b8c5678" }
+                  "message": "Doctor profile created successfully",
+                  "data": {
+                    "id": "67f0b2a8360d88b6e145df81",
+                    "name": "Dr Priya Sharma",
+                    "email": "priya@example.com",
+                    "status": "approved"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "400": { "$ref": "#/components/responses/BadRequest" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Doctor profile already exists"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
         }
       }
     },
-    "/superadmin/admins/{id}": {
-      "delete": {
-        "tags": ["Super Admin Module"],
-        "summary": "Delete admin (super admin only)",
-        "security": [{ "bearerAuth": [] }],
+    "/doctors/{id}": {
+      "get": {
+        "tags": [
+          "Doctor Module"
+        ],
+        "summary": "Get doctor profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Admin deleted",
+            "description": "Doctor fetched successfully",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
-                  "message": "Admin deleted",
-                  "data": { "id": "65f1a1c2e2a5f83a9b8c5678" }
+                  "message": "Doctor fetched successfully",
+                  "data": {
+                    "id": "67f0b2a8360d88b6e145df81",
+                    "userId": "67f0b2a8360d88b6e145df01",
+                    "name": "Dr Priya Sharma",
+                    "gender": "female",
+                    "dob": "1990-04-12T00:00:00.000Z",
+                    "blood_group": "O+",
+                    "phone": "+91-9876543210",
+                    "email": "priya@example.com",
+                    "department": "Cardiology",
+                    "status": "approved",
+                    "selected_hospitals": [],
+                    "approved_hospitals": []
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/doctors/{id}/select-hospital": {
+      "post": {
+        "tags": [
+          "Doctor Module"
+        ],
+        "summary": "Select hospital for doctor",
+        "description": "Adds a hospital to the doctor's selected list. Duplicate selections are rejected.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectHospitalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital selected successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Duplicate hospital selection"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals": {
+      "post": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Create hospital profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHospitalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hospital profile created"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Hospital profile already exists"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Get hospital profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Hospital fetched successfully",
+                  "data": {
+                    "id": "67f0b2a8360d88b6e145df90",
+                    "userId": "67f0b2a8360d88b6e145df10",
+                    "name": "Metro Care Hospital",
+                    "location": "Bengaluru",
+                    "phone": "+91-9988776655",
+                    "email": "metro@example.com",
+                    "departments": [
+                      "Cardiology",
+                      "Orthopedics"
+                    ],
+                    "status": "approved",
+                    "subscription_amount": 1200,
+                    "departmentId": "67e3a1c2e2a5f83a9b8c1234",
+                    "departmentName": "Cardiology"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/pending-doctors": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "List pending doctors for hospital",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending doctors fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Pending doctors fetched successfully",
+                  "data": {
+                    "hospital": {
+                      "id": "67f0b2a8360d88b6e145df90",
+                      "name": "Metro Care Hospital",
+                      "location": "Bengaluru",
+                      "status": "approved"
+                    },
+                    "doctors": [
+                      {
+                        "id": "67f0b2a8360d88b6e145df81",
+                        "userId": "67f0b2a8360d88b6e145df01",
+                        "name": "Dr Priya Sharma",
+                        "email": "priya@example.com",
+                        "phone": "+91-9876543210",
+                        "department": "Cardiology",
+                        "status": "approved"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/approve-doctor": {
+      "patch": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Approve doctor for hospital",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HospitalDoctorActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor approved successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/reject-doctor": {
+      "patch": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Reject doctor for hospital",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HospitalDoctorActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor rejected successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/subscription": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Get hospital subscription",
+        "description": "Only the owning approved hospital account can view this endpoint. If a hospital override exists, it is returned; otherwise the default subscription is used.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Subscription fetched successfully",
+                  "data": {
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "hospitalName": "Metro Care Hospital",
+                    "amount": 1200,
+                    "currency": "INR",
+                    "interval": "month",
+                    "source": "hospital_override"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/department": {
+      "put": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Assign or update hospital department",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHospitalDepartmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital department updated successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospital/{id}": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Legacy alias for get hospital profile",
+        "deprecated": true,
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital fetched successfully"
+          }
+        }
+      }
+    },
+    "/hospital/{id}/department": {
+      "put": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Legacy alias for assign or update hospital department",
+        "deprecated": true,
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHospitalDepartmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital department updated successfully"
+          }
+        }
+      }
+    },
+    "/admin/doctors": {
+      "get": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "List doctors",
+        "description": "Supports filtering by approval status, sorting, and pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Examples: name, -createdAt, status"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctors fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctors fetched successfully",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "67f0b2a8360d88b6e145df81",
+                        "userId": "67f0b2a8360d88b6e145df01",
+                        "profileId": "67f0b2a8360d88b6e145df81",
+                        "name": "Dr Priya Sharma",
+                        "email": "priya@example.com",
+                        "role": "doctor",
+                        "status": "pending",
+                        "phone": "+91-9876543210",
+                        "department": "Cardiology",
+                        "createdAt": "2026-03-27T10:00:00.000Z",
+                        "updatedAt": "2026-03-27T10:00:00.000Z"
+                      }
+                    ],
+                    "pagination": {
+                      "page": 1,
+                      "limit": 10,
+                      "total": 1,
+                      "totalPages": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/hospitals": {
+      "get": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "List hospitals",
+        "description": "Supports filtering by approval status, sorting, and pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospitals fetched successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/doctors/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Update doctor approval status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor status updated successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/hospitals/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Update hospital approval status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital status updated successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/subscription/default": {
+      "post": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Set default subscription amount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultSubscriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default subscription updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Default subscription updated successfully",
+                  "data": {
+                    "_id": "67f0b2a8360d88b6e145df99",
+                    "key": "default",
+                    "amount": 500,
+                    "currency": "INR",
+                    "interval": "month"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/subscription/hospital": {
+      "post": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Override subscription for hospital",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HospitalSubscriptionOverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital subscription updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Hospital subscription updated successfully",
+                  "data": {
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "subscription_amount": 1200
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/approve": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Approve generic user login",
+        "description": "Legacy generic approval endpoint. Prefer the doctor and hospital status endpoints for those role-specific flows.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User approved"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/reject": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Reject generic user login",
+        "description": "Legacy generic approval endpoint. Prefer the doctor and hospital status endpoints for those role-specific flows.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User rejected"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/onboard": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Complete onboarding",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User onboarded"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "delete": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Delete user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/superadmin/admins": {
+      "post": {
+        "tags": [
+          "Super Admin Module"
+        ],
+        "summary": "Create admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admin created"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/superadmin/admins/{id}": {
+      "delete": {
+        "tags": [
+          "Super Admin Module"
+        ],
+        "summary": "Delete admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
         }
       }
     },
     "/health": {
       "get": {
-        "tags": ["System"],
+        "tags": [
+          "System"
+        ],
         "summary": "Health check",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
                 "example": {
                   "success": true,
                   "message": "OK"

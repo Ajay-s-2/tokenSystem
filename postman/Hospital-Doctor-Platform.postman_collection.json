@@ -1,0 +1,322 @@
+{
+  "info": {
+    "name": "Hospital-Doctor Platform",
+    "_postman_id": "9ee51df2-b267-42e8-a3af-4e6b37957d5d",
+    "description": "Postman collection for doctor, hospital, admin approval, mapping, and subscription flows.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth - Register Doctor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Dr. Priya Sharma\",\n  \"email\": \"priya@example.com\",\n  \"password\": \"Password@123\",\n  \"confirmPassword\": \"Password@123\",\n  \"role\": \"doctor\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Auth - Register Hospital",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Metro Care Hospital\",\n  \"email\": \"metro@example.com\",\n  \"password\": \"Password@123\",\n  \"confirmPassword\": \"Password@123\",\n  \"role\": \"hospital\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Doctor - Create Profile",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Dr. Priya Sharma\",\n  \"gender\": \"female\",\n  \"dob\": \"1990-04-12\",\n  \"blood_group\": \"O+\",\n  \"phone\": \"+91-9876543210\",\n  \"department\": \"Cardiology\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "doctors"]
+        }
+      }
+    },
+    {
+      "name": "Hospital - Create Profile",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{hospitalToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Metro Care Hospital\",\n  \"location\": \"Bengaluru\",\n  \"phone\": \"+91-9988776655\",\n  \"departments\": [\"Cardiology\", \"Orthopedics\", \"Neurology\"]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/hospitals",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hospitals"]
+        }
+      }
+    },
+    {
+      "name": "Admin - List Pending Doctors",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/doctors?status=pending&sort=-createdAt&page=1&limit=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "doctors"],
+          "query": [
+            {
+              "key": "status",
+              "value": "pending"
+            },
+            {
+              "key": "sort",
+              "value": "-createdAt"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Admin - Approve Doctor",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"approved\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/doctors/{{doctorId}}/status",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "doctors", "{{doctorId}}", "status"]
+        }
+      }
+    },
+    {
+      "name": "Doctor - Select Hospital",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{doctorToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hospitalId\": \"{{hospitalId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/doctors/{{doctorId}}/select-hospital",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "doctors", "{{doctorId}}", "select-hospital"]
+        }
+      }
+    },
+    {
+      "name": "Hospital - Pending Doctors",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{hospitalToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/hospitals/{{hospitalId}}/pending-doctors",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hospitals", "{{hospitalId}}", "pending-doctors"]
+        }
+      }
+    },
+    {
+      "name": "Hospital - Approve Doctor",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{hospitalToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"doctorId\": \"{{doctorId}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/hospitals/{{hospitalId}}/approve-doctor",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hospitals", "{{hospitalId}}", "approve-doctor"]
+        }
+      }
+    },
+    {
+      "name": "Admin - Set Default Subscription",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 500\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/subscription/default",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "subscription", "default"]
+        }
+      }
+    },
+    {
+      "name": "Admin - Override Hospital Subscription",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"hospitalId\": \"{{hospitalId}}\",\n  \"amount\": 1200\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/subscription/hospital",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "subscription", "hospital"]
+        }
+      }
+    },
+    {
+      "name": "Hospital - Get Subscription",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{hospitalToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/hospitals/{{hospitalId}}/subscription",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hospitals", "{{hospitalId}}", "subscription"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "doctorToken",
+      "value": ""
+    },
+    {
+      "key": "hospitalToken",
+      "value": ""
+    },
+    {
+      "key": "doctorId",
+      "value": ""
+    },
+    {
+      "key": "hospitalId",
+      "value": ""
+    }
+  ]
+}
