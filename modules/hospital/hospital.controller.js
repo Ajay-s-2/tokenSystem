@@ -87,6 +87,25 @@ const getApprovedDoctors = async (req, res) => {
   }
 };
 
+const getRejectedDoctors = async (req, res) => {
+  try {
+    const data = await hospitalService.getRejectedDoctors({
+      hospitalId: req.params.id,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Rejected doctors fetched successfully", data);
+  } catch (error) {
+    return sendError(
+      res,
+      error.message || "Internal server error",
+      error.statusCode || 500,
+      error.errors || null
+    );
+  }
+};
+
 const approveDoctor = async (req, res) => {
   try {
     const doctor = await hospitalService.approveDoctor({
@@ -153,6 +172,7 @@ module.exports = {
   updateHospitalDepartment,
   getPendingDoctors,
   getApprovedDoctors,
+  getRejectedDoctors,
   approveDoctor,
   rejectDoctor,
   getSubscription,

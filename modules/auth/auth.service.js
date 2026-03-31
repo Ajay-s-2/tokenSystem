@@ -226,6 +226,32 @@ const verifyRegisterOtp = async ({ email, otp }) => {
   return { message: "Email verified successfully" };
 };
 
+const resendRegisterOtp = async ({ email }) => {
+  if (!email) {
+    throw createHttpError(400, "Email is required");
+  }
+
+  const user = await userRepository.findByEmail(email);
+  if (!user) {
+    throw createHttpError(404, "User not found");
+  }
+
+  if (user.isEmailVerified) {
+    throw createHttpError(400, "Email is already verified");
+  }
+
+  const { token, secret, expiresAt } = otpService.generateOtp();
+
+  await userRepository.updateById(user._id, {
+    otpSecret: secret,
+    otpExpiresAt: expiresAt,
+  });
+
+  console.log("Resent registration OTP:", token);
+
+  return { message: "A new registration OTP has been sent." };
+};
+
 const login = async ({ email, password }) => {
   if (!email || !password) {
     throw createHttpError(400, "Email and password are required");
@@ -319,9 +345,49 @@ const verifyLoginOtp = async ({ email, otp }) => {
   return { token, role: user.role };
 };
 
+const resendLoginOtp = async ({ email }) => {
+  if (!email) {
+    throw createHttpError(400, "Email is required");
+  }
+
+  if (isEnvSuperAdmin(email)) {
+    const { token, secret, expiresAt } = otpService.generateOtp();
+    superAdminOtpStore.setOtp(email, { secret, expiresAt });
+
+    console.log("Resent Super Admin Login OTP:", token);
+    return { message: "A new login OTP has been sent." };
+  }
+
+  const user = await userRepository.findByEmail(email);
+  if (!user) {
+    throw createHttpError(404, "User not found");
+  }
+
+  if (user.loginStatus !== LOGIN_STATUS.APPROVED) {
+    throw createHttpError(403, "Only approved users can request login OTP");
+  }
+
+  if (!user.isEmailVerified) {
+    throw createHttpError(403, "Email is not verified");
+  }
+
+  const { token, secret, expiresAt } = otpService.generateOtp();
+
+  await userRepository.updateById(user._id, {
+    otpSecret: secret,
+    otpExpiresAt: expiresAt,
+  });
+
+  console.log("Resent login OTP:", token);
+
+  return { message: "A new login OTP has been sent." };
+};
+
 module.exports = {
   register,
   verifyRegisterOtp,
   login,
   verifyLoginOtp,
+  resendRegisterOtp,
+  resendLoginOtp,
 };

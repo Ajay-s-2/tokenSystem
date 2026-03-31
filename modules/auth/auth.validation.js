@@ -30,8 +30,13 @@ const otpValidation = [
     .withMessage("OTP format is invalid"),
 ];
 
+const resendOtpValidation = [
+  body("email").trim().isEmail().withMessage("Valid email is required"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
   otpValidation,
+  resendOtpValidation,
 };

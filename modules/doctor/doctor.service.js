@@ -8,12 +8,14 @@ const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.
 const resolveDoctorByIdentifier = async (identifier) => {
   let doctor = await Doctor.findById(identifier)
     .populate("selectedHospitals", "name email location")
-    .populate("approvedHospitals", "name email location");
+    .populate("approvedHospitals", "name email location")
+    .populate("rejectedHospitals", "name email location");
 
   if (!doctor) {
     doctor = await Doctor.findOne({ userId: identifier })
       .populate("selectedHospitals", "name email location")
-      .populate("approvedHospitals", "name email location");
+      .populate("approvedHospitals", "name email location")
+      .populate("rejectedHospitals", "name email location");
   }
 
   return doctor;
@@ -39,6 +41,12 @@ const mapDoctor = (doctor) => ({
     location: hospital.location,
   })),
   approved_hospitals: (doctor.approvedHospitals || []).map((hospital) => ({
+    id: hospital._id,
+    name: hospital.name,
+    email: hospital.email,
+    location: hospital.location,
+  })),
+  rejected_hospitals: (doctor.rejectedHospitals || []).map((hospital) => ({
     id: hospital._id,
     name: hospital.name,
     email: hospital.email,
@@ -73,6 +81,7 @@ const createDoctorProfile = async (payload, authUser) => {
     status: getApprovalStatusFromLoginStatus(user.loginStatus),
     selectedHospitals: [],
     approvedHospitals: [],
+    rejectedHospitals: [],
   });
 
   user.name = payload.name;
@@ -130,6 +139,9 @@ const selectHospital = async ({ doctorId, hospitalId, requesterId, requesterRole
     throw createHttpError(409, "Hospital already selected");
   }
 
+  doctor.rejectedHospitals = doctor.rejectedHospitals.filter(
+    (rejectedHospitalId) => String(rejectedHospitalId) !== String(hospital._id)
+  );
   doctor.selectedHospitals.push(hospital._id);
   await doctor.save();
 
@@ -140,6 +152,7 @@ const getPendingDoctorsForHospital = async (hospitalId) => {
   const doctors = await Doctor.find({
     selectedHospitals: hospitalId,
     approvedHospitals: { $nin: [hospitalId] },
+    rejectedHospitals: { $nin: [hospitalId] },
   })
     .sort({ createdAt: -1 })
     .lean();
@@ -152,6 +165,24 @@ const getPendingDoctorsForHospital = async (hospitalId) => {
     phone: doctor.phone,
     department: doctor.department,
     status: doctor.status,
+    createdAt: doctor.createdAt,
+  }));
+};
+
+const getRejectedDoctorsForHospital = async (hospitalId) => {
+  const doctors = await Doctor.find({ rejectedHospitals: hospitalId })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return doctors.map((doctor) => ({
+    id: doctor._id,
+    userId: doctor.userId,
+    name: doctor.name,
+    email: doctor.email,
+    phone: doctor.phone,
+    department: doctor.department,
+    status: doctor.status,
+    createdAt: doctor.createdAt,
   }));
 };
 
@@ -164,27 +195,33 @@ const moveDoctorHospitalApproval = async ({ hospitalId, doctorId, approve }) => 
   const hasSelectedHospital = doctor.selectedHospitals.some(
     (selectedHospitalId) => String(selectedHospitalId) === String(hospitalId)
   );
+  const hasApprovedHospital = doctor.approvedHospitals.some(
+    (approvedHospitalId) => String(approvedHospitalId) === String(hospitalId)
+  );
+  const hasRejectedHospital = doctor.rejectedHospitals.some(
+    (rejectedHospitalId) => String(rejectedHospitalId) === String(hospitalId)
+  );
 
-  if (!hasSelectedHospital) {
+  if (!hasSelectedHospital && !hasApprovedHospital && !hasRejectedHospital) {
     throw createHttpError(400, "Doctor has not selected this hospital");
   }
 
   doctor.selectedHospitals = doctor.selectedHospitals.filter(
     (selectedHospitalId) => String(selectedHospitalId) !== String(hospitalId)
   );
+  doctor.approvedHospitals = doctor.approvedHospitals.filter(
+    (approvedHospitalId) => String(approvedHospitalId) !== String(hospitalId)
+  );
+  doctor.rejectedHospitals = doctor.rejectedHospitals.filter(
+    (rejectedHospitalId) => String(rejectedHospitalId) !== String(hospitalId)
+  );
 
   if (approve) {
-    const alreadyApproved = doctor.approvedHospitals.some(
-      (approvedHospitalId) => String(approvedHospitalId) === String(hospitalId)
-    );
-
-    if (!alreadyApproved) {
+    if (!hasApprovedHospital || hasRejectedHospital || hasSelectedHospital) {
       doctor.approvedHospitals.push(hospitalId);
     }
   } else {
-    doctor.approvedHospitals = doctor.approvedHospitals.filter(
-      (approvedHospitalId) => String(approvedHospitalId) !== String(hospitalId)
-    );
+    doctor.rejectedHospitals.push(hospitalId);
   }
 
   await doctor.save();
@@ -192,7 +229,11 @@ const moveDoctorHospitalApproval = async ({ hospitalId, doctorId, approve }) => 
 };
 
 const syncDoctorStatus = async (userId, status) => {
-  const doctor = await Doctor.findOneAndUpdate({ userId }, { status }, { new: true });
+  const doctor = await Doctor.findOneAndUpdate(
+    { userId },
+    { status },
+    { returnDocument: "after" }
+  );
   return doctor;
 };
 
@@ -201,6 +242,7 @@ module.exports = {
   getDoctorById,
   selectHospital,
   getPendingDoctorsForHospital,
+  getRejectedDoctorsForHospital,
   moveDoctorHospitalApproval,
   syncDoctorStatus,
   resolveDoctorByIdentifier,

@@ -24,7 +24,7 @@ const setDefaultSubscription = async (amount) => {
       currency: "INR",
       interval: "month",
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   return subscription;

@@ -1,6 +1,29 @@
 const { body, param, query } = require("express-validator");
 const { APPROVAL_STATUS } = require("../../shared/utils/constants");
 
+const amountValidationMessage = "Subscription amount must be a non-negative number";
+
+const amountValidator = body("amount")
+  .customSanitizer((value) => {
+    if (typeof value === "string") {
+      return value.trim();
+    }
+    return value;
+  })
+  .custom((value) => {
+    if (value === "" || value === null || value === undefined) {
+      throw new Error(amountValidationMessage);
+    }
+
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue) || numericValue < 0) {
+      throw new Error(amountValidationMessage);
+    }
+
+    return true;
+  })
+  .customSanitizer((value) => Number(value));
+
 const listValidation = [
   query("status")
     .optional()
@@ -23,18 +46,12 @@ const statusUpdateValidation = [
 ];
 
 const defaultSubscriptionValidation = [
-  body("amount")
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage("Subscription amount must be a non-negative number"),
+  amountValidator,
 ];
 
 const hospitalSubscriptionValidation = [
   body("hospitalId").isMongoId().withMessage("Valid hospital id is required"),
-  body("amount")
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage("Subscription amount must be a non-negative number"),
+  amountValidator,
 ];
 
 module.exports = {

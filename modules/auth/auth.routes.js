@@ -13,6 +13,12 @@ router.post(
   validationMiddleware,
   authController.verifyRegisterOtp
 );
+router.post(
+  "/resend-register-otp",
+  authValidation.resendOtpValidation,
+  validationMiddleware,
+  authController.resendRegisterOtp
+);
 
 // Login flow
 router.post("/login", authValidation.loginValidation, validationMiddleware, authController.login);
@@ -21,6 +27,12 @@ router.post(
   authValidation.otpValidation,
   validationMiddleware,
   authController.verifyLoginOtp
+);
+router.post(
+  "/resend-login-otp",
+  authValidation.resendOtpValidation,
+  validationMiddleware,
+  authController.resendLoginOtp
 );
 
 module.exports = router;

@@ -48,6 +48,14 @@ router.get(
   hospitalController.getApprovedDoctors
 );
 
+router.get(
+  "/:id/rejected-doctors",
+  roleMiddleware([ROLES.HOSPITAL]),
+  hospitalValidation.hospitalIdValidation,
+  validationMiddleware,
+  hospitalController.getRejectedDoctors
+);
+
 router.patch(
   "/:id/approve-doctor",
   roleMiddleware([ROLES.HOSPITAL]),

@@ -133,7 +133,7 @@ const updateHospitalDepartment = async (hospitalId, departmentId) => {
       $set: { departmentId: department._id },
       $addToSet: { departments: department.departmentName },
     },
-    { new: true }
+    { returnDocument: "after" }
   )
     .populate("departmentId", "departmentName")
     .lean();
@@ -184,7 +184,18 @@ const getApprovedDoctors = async ({ hospitalId, requesterId, requesterRole }) =>
       phone: doctor.phone,
       department: doctor.department,
       status: doctor.status,
+      createdAt: doctor.createdAt,
     })),
+  };
+};
+
+const getRejectedDoctors = async ({ hospitalId, requesterId, requesterRole }) => {
+  const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+  const doctors = await doctorService.getRejectedDoctorsForHospital(hospital._id);
+
+  return {
+    hospital: mapHospital(hospital),
+    doctors,
   };
 };
 
@@ -214,7 +225,7 @@ const getSubscription = async ({ hospitalId, requesterId, requesterRole }) =>
   });
 
 const syncHospitalStatus = async (userId, status) =>
-  Hospital.findOneAndUpdate({ userId }, { status }, { new: true });
+  Hospital.findOneAndUpdate({ userId }, { status }, { returnDocument: "after" });
 
 module.exports = {
   listHospitals,
@@ -223,6 +234,7 @@ module.exports = {
   updateHospitalDepartment,
   getPendingDoctors,
   getApprovedDoctors,
+  getRejectedDoctors,
   approveDoctor,
   rejectDoctor,
   getSubscription,

@@ -14,7 +14,7 @@ const findById = async (id) => User.findById(id);
 const findOne = async (query) => User.findOne(query);
 
 const updateById = async (id, payload) =>
-  User.findByIdAndUpdate(id, payload, { new: true });
+  User.findByIdAndUpdate(id, payload, { returnDocument: "after" });
 
 const deleteById = async (id) => User.findByIdAndDelete(id);
 

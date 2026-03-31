@@ -37,9 +37,29 @@ const verifyLoginOtp = async (req, res) => {
   }
 };
 
+const resendRegisterOtp = async (req, res) => {
+  try {
+    const data = await authService.resendRegisterOtp(req.body);
+    return sendSuccess(res, data.message);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const resendLoginOtp = async (req, res) => {
+  try {
+    const data = await authService.resendLoginOtp(req.body);
+    return sendSuccess(res, data.message);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 module.exports = {
   register,
   verifyRegisterOtp,
   login,
   verifyLoginOtp,
+  resendRegisterOtp,
+  resendLoginOtp,
 };
