@@ -76,6 +76,7 @@ const getHospitalSubscription = async ({ hospitalId, requesterId, requesterRole 
     hospitalId: hospital._id,
     hospitalName: hospital.name,
     amount,
+    defaultAmount: defaultSubscription.amount,
     currency: defaultSubscription.currency,
     interval: defaultSubscription.interval,
     source: hospital.subscriptionAmount != null ? "hospital_override" : "default",

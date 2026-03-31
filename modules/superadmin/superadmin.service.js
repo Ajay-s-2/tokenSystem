@@ -1,6 +1,7 @@
 const { ROLES, LOGIN_STATUS, ONBOARDING_STATUS } = require("../../shared/utils/constants");
 const { hashPassword } = require("../../shared/utils/password.util");
 const userRepository = require("../user/user.repository");
+const Department = require("../department/department.model");
 
 const createAdmin = async (payload) => {
   const {
@@ -94,8 +95,56 @@ const ensureSuperAdmin = async () => {
   return superAdmin;
 };
 
+const ensureDefaultDepartments = async () => {
+  const defaultDepartments = [
+    "General Medicine",
+    "Cardiology",
+    "Orthopedics",
+    "Neurology",
+    "Gastroenterology",
+    "Oncology",
+    "Psychiatry",
+    "Dermatology",
+    "ENT",
+    "Ophthalmology",
+    "Urology",
+    "Gynecology",
+    "Pediatrics",
+    "Surgery",
+    "Radiology",
+    "Pathology",
+    "Anesthesiology"
+  ];
+
+  const DEPARTMENT_ID_PREFIX = "DEP";
+
+  try {
+    const existingCount = await Department.countDocuments({});
+    if (existingCount > 0) {
+      return; // Departments already exist
+    }
+
+    // Get the sequence for next department ID
+    const lastDepartment = await Department.findOne({}).sort({ createdAt: -1 }).lean();
+    const nextSequence = 1;
+
+    // Create all default departments
+    const departmentsToCreate = defaultDepartments.map((name, index) => ({
+      departmentId: `${DEPARTMENT_ID_PREFIX}${String(index + 1).padStart(3, "0")}`,
+      departmentName: name,
+      createdBy: "system-seed"
+    }));
+
+    await Department.insertMany(departmentsToCreate);
+    console.log(`Created ${departmentsToCreate.length} default departments`);
+  } catch (error) {
+    console.error("Error seeding default departments:", error.message);
+  }
+};
+
 module.exports = {
   createAdmin,
   deleteAdmin,
   ensureSuperAdmin,
+  ensureDefaultDepartments,
 };

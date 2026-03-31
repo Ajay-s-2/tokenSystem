@@ -1,7 +1,7 @@
 require("dotenv").config();
 const app = require("./app");
 const connectDB = require("./config/db");
-const { ensureSuperAdmin } = require("./modules/superadmin/superadmin.service");
+const { ensureSuperAdmin, ensureDefaultDepartments } = require("./modules/superadmin/superadmin.service");
 
 const PORT = process.env.PORT || 4000;
 
@@ -11,6 +11,9 @@ const startServer = async () => {
 
     // Ensure a super admin exists based on .env credentials
     await ensureSuperAdmin();
+
+    // Ensure default departments are seeded
+    await ensureDefaultDepartments();
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

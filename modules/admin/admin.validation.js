@@ -24,6 +24,7 @@ const statusUpdateValidation = [
 
 const defaultSubscriptionValidation = [
   body("amount")
+    .toFloat()
     .isFloat({ min: 0 })
     .withMessage("Subscription amount must be a non-negative number"),
 ];
@@ -31,6 +32,7 @@ const defaultSubscriptionValidation = [
 const hospitalSubscriptionValidation = [
   body("hospitalId").isMongoId().withMessage("Valid hospital id is required"),
   body("amount")
+    .toFloat()
     .isFloat({ min: 0 })
     .withMessage("Subscription amount must be a non-negative number"),
 ];
