@@ -8,6 +8,8 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+router.get("/me", userController.getMe);
+
 router.patch(
   "/me/department",
   roleMiddleware([ROLES.COMMON_USER]),

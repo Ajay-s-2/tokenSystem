@@ -41,6 +41,7 @@ router.post(
   validationMiddleware,
   adminController.setDefaultSubscription
 );
+router.get("/subscription/default", adminController.getDefaultSubscription);
 router.post(
   "/subscription/hospital",
   adminValidation.hospitalSubscriptionValidation,

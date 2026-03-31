@@ -13,9 +13,11 @@ const DoctorSchema = new mongoose.Schema(
     gender: { type: String, required: true, trim: true },
     dob: { type: Date, required: true },
     bloodGroup: { type: String, required: true, trim: true },
+    medicalRegistrationId: { type: String, trim: true, default: null },
     phone: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
     department: { type: String, required: true, trim: true },
+    specialization: { type: String, trim: true, default: null },
     status: {
       type: String,
       enum: Object.values(APPROVAL_STATUS),

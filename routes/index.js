@@ -5,6 +5,7 @@ const departmentRoutes = require("../modules/department/department.routes");
 const doctorRoutes = require("../modules/doctor/doctor.routes");
 const hospitalRoutes = require("../modules/hospital/hospital.routes");
 const superAdminRoutes = require("../modules/superadmin/superadmin.routes");
+const userRoutes = require("../modules/user/user.routes");
 
 const router = express.Router();
 
@@ -19,5 +20,6 @@ router.use("/doctors", doctorRoutes);
 router.use("/hospitals", hospitalRoutes);
 router.use("/hospital", hospitalRoutes);
 router.use("/superadmin", superAdminRoutes);
+router.use("/users", userRoutes);
 
 module.exports = router;

@@ -25,6 +25,16 @@ const getHospitalById = async (req, res) => {
   }
 };
 
+const listHospitals = async (req, res) => {
+  try {
+    const data = await hospitalService.listHospitals(req.query);
+    return sendSuccess(res, "Hospitals fetched successfully", data);
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    return sendError(res, error.message || "Internal server error", statusCode, error.errors || null);
+  }
+};
+
 const updateHospitalDepartment = async (req, res) => {
   try {
     const hospital = await hospitalService.updateHospitalDepartment(
@@ -48,6 +58,25 @@ const getPendingDoctors = async (req, res) => {
     });
 
     return sendSuccess(res, "Pending doctors fetched successfully", data);
+  } catch (error) {
+    return sendError(
+      res,
+      error.message || "Internal server error",
+      error.statusCode || 500,
+      error.errors || null
+    );
+  }
+};
+
+const getApprovedDoctors = async (req, res) => {
+  try {
+    const data = await hospitalService.getApprovedDoctors({
+      hospitalId: req.params.id,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Approved doctors fetched successfully", data);
   } catch (error) {
     return sendError(
       res,
@@ -118,10 +147,12 @@ const getSubscription = async (req, res) => {
 };
 
 module.exports = {
+  listHospitals,
   createHospital,
   getHospitalById,
   updateHospitalDepartment,
   getPendingDoctors,
+  getApprovedDoctors,
   approveDoctor,
   rejectDoctor,
   getSubscription,

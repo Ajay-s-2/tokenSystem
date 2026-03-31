@@ -2,11 +2,13 @@ const mongoose = require("mongoose");
 const Hospital = require("./hospital.model");
 const Department = require("../department/department.model");
 const doctorService = require("../doctor/doctor.service");
+const Doctor = require("../doctor/doctor.model");
 const subscriptionService = require("../subscription/subscription.service");
 const User = require("../user/user.model");
-const { ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
+const { ONBOARDING_STATUS, ROLES, APPROVAL_STATUS } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
 const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.util");
+const { parsePagination, buildSort } = require("../../shared/utils/query.util");
 
 const resolveHospitalByIdentifier = async (identifier) => {
   let hospital = await Hospital.findById(identifier).populate("departmentId", "departmentName");
@@ -36,6 +38,34 @@ const mapHospital = (hospital) => ({
   createdAt: hospital.createdAt,
   updatedAt: hospital.updatedAt,
 });
+
+const normalizeApprovalStatus = (status) => String(status || "").trim().toLowerCase();
+
+const listHospitals = async (query = {}) => {
+  const filters = {};
+  const status = normalizeApprovalStatus(query.status);
+  if (status && Object.values(APPROVAL_STATUS).includes(status)) {
+    filters.status = status;
+  }
+
+  const { page, limit, skip } = parsePagination(query);
+  const sort = buildSort(query.sort, ["createdAt", "updatedAt", "name"], { createdAt: -1 });
+
+  const [hospitals, total] = await Promise.all([
+    Hospital.find(filters).sort(sort).skip(skip).limit(limit).lean(),
+    Hospital.countDocuments(filters),
+  ]);
+
+  return {
+    items: hospitals.map(mapHospital),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+    },
+  };
+};
 
 const getHospitalById = async (hospitalId) => {
   if (!mongoose.isValidObjectId(hospitalId)) {
@@ -138,6 +168,26 @@ const getPendingDoctors = async ({ hospitalId, requesterId, requesterRole }) => 
   };
 };
 
+const getApprovedDoctors = async ({ hospitalId, requesterId, requesterRole }) => {
+  const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+  const doctors = await Doctor.find({ approvedHospitals: hospital._id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return {
+    hospital: mapHospital(hospital),
+    doctors: doctors.map((doctor) => ({
+      id: doctor._id,
+      userId: doctor.userId,
+      name: doctor.name,
+      email: doctor.email,
+      phone: doctor.phone,
+      department: doctor.department,
+      status: doctor.status,
+    })),
+  };
+};
+
 const approveDoctor = async ({ hospitalId, doctorId, requesterId, requesterRole }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
   return doctorService.moveDoctorHospitalApproval({
@@ -167,10 +217,12 @@ const syncHospitalStatus = async (userId, status) =>
   Hospital.findOneAndUpdate({ userId }, { status }, { new: true });
 
 module.exports = {
+  listHospitals,
   createHospitalProfile,
   getHospitalById,
   updateHospitalDepartment,
   getPendingDoctors,
+  getApprovedDoctors,
   approveDoctor,
   rejectDoctor,
   getSubscription,

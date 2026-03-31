@@ -11,19 +11,19 @@ router.get("/", departmentController.getDepartments);
 router.post(
   "/",
   authMiddleware,
-  roleMiddleware([ROLES.SUPER_ADMIN]),
+  roleMiddleware([ROLES.SUPER_ADMIN, ROLES.ADMIN]),
   departmentController.createDepartment
 );
 router.put(
   "/:id",
   authMiddleware,
-  roleMiddleware([ROLES.SUPER_ADMIN]),
+  roleMiddleware([ROLES.SUPER_ADMIN, ROLES.ADMIN]),
   departmentController.updateDepartment
 );
 router.delete(
   "/:id",
   authMiddleware,
-  roleMiddleware([ROLES.SUPER_ADMIN]),
+  roleMiddleware([ROLES.SUPER_ADMIN, ROLES.ADMIN]),
   departmentController.deleteDepartment
 );
 

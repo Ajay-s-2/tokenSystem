@@ -5,7 +5,10 @@ const { createHttpError } = require("../../shared/utils/error.util");
 const otpService = require("../../shared/services/otp.service");
 const superAdminOtpStore = require("../../shared/services/superadmin-otp.store");
 const departmentService = require("../department/department.service");
+const Doctor = require("../doctor/doctor.model");
+const Hospital = require("../hospital/hospital.model");
 const userRepository = require("../user/user.repository");
+const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.util");
 
 const register = async (payload) => {
   const {
@@ -15,6 +18,14 @@ const register = async (payload) => {
     specialization,
     spelization,
     departmentId,
+    department,
+    phone,
+    dob,
+    blood_group,
+    location,
+    departments,
+    adminAccessCode,
+    medicalRegistrationId,
     email,
     password,
     confirmPassword,
@@ -39,10 +50,12 @@ const register = async (payload) => {
   };
 
   const normalizedSpecialization = specialization || spelization || null;
+  let doctorDepartment = null;
 
   if (role === ROLES.ADMIN) {
-    if (!age || !gender || !normalizedSpecialization) {
-      throw createHttpError(400, "Admin registration requires age, gender and specialization");
+    const requiredAccessCode = process.env.ADMIN_ACCESS_CODE;
+    if (requiredAccessCode && adminAccessCode !== requiredAccessCode) {
+      throw createHttpError(403, "Invalid admin access code");
     }
   }
 
@@ -63,12 +76,36 @@ const register = async (payload) => {
     };
   }
 
+  if (role === ROLES.DOCTOR) {
+    if (!phone || !dob || !blood_group || !gender) {
+      throw createHttpError(
+        400,
+        "Doctor registration requires phone, gender, date of birth and blood group"
+      );
+    }
+
+    doctorDepartment = departmentData.departmentName || department || null;
+    if (!doctorDepartment) {
+      throw createHttpError(400, "Doctor registration requires department");
+    }
+  }
+
+  if (role === ROLES.HOSPITAL) {
+    if (!phone || !location || !Array.isArray(departments) || departments.length === 0) {
+      throw createHttpError(400, "Hospital registration requires location, phone, and departments");
+    }
+  }
+
   const existingUser = await userRepository.findByEmail(email);
   if (existingUser) {
     throw createHttpError(409, "Email already registered");
   }
 
   const hashedPassword = await hashPassword(password);
+
+  const loginStatus = role === ROLES.ADMIN ? LOGIN_STATUS.APPROVED : LOGIN_STATUS.PENDING;
+  const onboardingStatus =
+    role === ROLES.ADMIN ? ONBOARDING_STATUS.ONBOARDED : ONBOARDING_STATUS.NOT_ONBOARDED;
 
   const user = await userRepository.createUser({
     name,
@@ -80,10 +117,60 @@ const register = async (payload) => {
     role,
     departmentId: departmentData.departmentId,
     departmentName: departmentData.departmentName,
-    loginStatus: LOGIN_STATUS.PENDING,
-    onboardingStatus: ONBOARDING_STATUS.NOT_ONBOARDED,
+    loginStatus,
+    onboardingStatus,
     isEmailVerified: false,
   });
+
+  const approvalStatus = getApprovalStatusFromLoginStatus(user.loginStatus);
+
+  if (role === ROLES.DOCTOR) {
+    await Doctor.create({
+      userId: user._id,
+      name,
+      gender,
+      dob,
+      bloodGroup: blood_group,
+      medicalRegistrationId: medicalRegistrationId || null,
+      phone,
+      email,
+      department: doctorDepartment,
+      specialization: normalizedSpecialization || null,
+      status: approvalStatus,
+      selectedHospitals: [],
+      approvedHospitals: [],
+    });
+
+    await userRepository.updateById(user._id, {
+      name,
+      gender,
+      specialization: normalizedSpecialization,
+      departmentId: departmentData.departmentId,
+      departmentName: doctorDepartment,
+      onboardingStatus: ONBOARDING_STATUS.ONBOARDED,
+    });
+  }
+
+  if (role === ROLES.HOSPITAL) {
+    if (!phone || !location || !Array.isArray(departments) || departments.length === 0) {
+      throw createHttpError(400, "Hospital registration requires location, phone, and departments");
+    }
+
+    await Hospital.create({
+      userId: user._id,
+      name,
+      location,
+      phone,
+      email,
+      departments,
+      status: approvalStatus,
+    });
+
+    await userRepository.updateById(user._id, {
+      name,
+      onboardingStatus: ONBOARDING_STATUS.ONBOARDED,
+    });
+  }
 
   // Generate OTP for email verification
   const { token, secret, expiresAt } = otpService.generateOtp();

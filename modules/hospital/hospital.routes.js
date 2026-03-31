@@ -10,6 +10,12 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+router.get(
+  "/",
+  roleMiddleware([ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DOCTOR, ROLES.HOSPITAL]),
+  hospitalController.listHospitals
+);
+
 router.post(
   "/",
   roleMiddleware([ROLES.HOSPITAL]),
@@ -32,6 +38,14 @@ router.get(
   hospitalValidation.hospitalIdValidation,
   validationMiddleware,
   hospitalController.getPendingDoctors
+);
+
+router.get(
+  "/:id/approved-doctors",
+  roleMiddleware([ROLES.HOSPITAL]),
+  hospitalValidation.hospitalIdValidation,
+  validationMiddleware,
+  hospitalController.getApprovedDoctors
 );
 
 router.patch(

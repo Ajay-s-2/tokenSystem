@@ -46,6 +46,15 @@ const setDefaultSubscription = async (req, res) => {
   }
 };
 
+const getDefaultSubscription = async (req, res) => {
+  try {
+    const subscription = await adminService.getDefaultSubscription();
+    return sendSuccess(res, "Default subscription fetched successfully", subscription);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 const setHospitalSubscription = async (req, res) => {
   try {
     const hospital = await adminService.setHospitalSubscription(req.body);
@@ -100,6 +109,7 @@ module.exports = {
   updateDoctorStatus,
   updateHospitalStatus,
   setDefaultSubscription,
+  getDefaultSubscription,
   setHospitalSubscription,
   approveUser,
   rejectUser,

@@ -7,6 +7,12 @@ const createDoctorValidation = [
   body("blood_group").trim().notEmpty().withMessage("Blood group is required"),
   body("phone").trim().notEmpty().withMessage("Phone is required"),
   body("department").trim().notEmpty().withMessage("Department is required"),
+  body("specialization").optional().trim().isString().withMessage("Specialization must be a string"),
+  body("medicalRegistrationId")
+    .optional()
+    .trim()
+    .isString()
+    .withMessage("Medical registration ID must be a string"),
 ];
 
 const doctorIdValidation = [

@@ -31,6 +31,7 @@ const mapAdminEntity = (user, profile = null) => ({
   status: profile?.status || getApprovalStatusFromLoginStatus(user.loginStatus),
   phone: profile?.phone || null,
   department: profile?.department || null,
+  specialization: profile?.specialization || user.specialization || null,
   location: profile?.location || null,
   departments: profile?.departments || [],
   subscription_amount: profile?.subscriptionAmount ?? null,
@@ -198,6 +199,8 @@ const updateHospitalStatus = async (id, status) =>
 const setDefaultSubscription = async (amount) =>
   subscriptionService.setDefaultSubscription(Number(amount));
 
+const getDefaultSubscription = async () => subscriptionService.getDefaultSubscription();
+
 const setHospitalSubscription = async ({ hospitalId, amount }) =>
   subscriptionService.setHospitalSubscription({
     hospitalId,
@@ -214,5 +217,6 @@ module.exports = {
   updateDoctorStatus,
   updateHospitalStatus,
   setDefaultSubscription,
+  getDefaultSubscription,
   setHospitalSubscription,
 };

@@ -12,7 +12,10 @@ const app = express();
 app.use(express.json());
 
 // Enable CORS for API clients
-app.use(cors());
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+  : "*";
+app.use(cors({ origin: corsOrigins }));
 
 
 
