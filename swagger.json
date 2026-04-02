@@ -29,6 +29,10 @@
       "description": "Hospital profile, pending doctor approvals, and subscription APIs."
     },
     {
+      "name": "Schedule Module",
+      "description": "Doctor scheduling, availability summaries, and patient token assignment APIs."
+    },
+    {
       "name": "Admin Module",
       "description": "Admin approval, filtering, pagination, and subscription management APIs."
     },
@@ -772,6 +776,379 @@
           "source": {
             "type": "string",
             "example": "hospital_override"
+          }
+        }
+      },
+      "ScheduleBootstrapData": {
+        "type": "object",
+        "properties": {
+          "hospital": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "67f0b2a8360d88b6e145df90"
+              },
+              "userId": {
+                "type": "string",
+                "example": "67f0b2a8360d88b6e145df10"
+              },
+              "name": {
+                "type": "string",
+                "example": "Metro Care Hospital"
+              },
+              "departments": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "Cardiology",
+                  "Neurology"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "example": "approved"
+              }
+            }
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Cardiology",
+              "Dermatology",
+              "General Medicine"
+            ]
+          },
+          "doctors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DoctorSummary"
+            }
+          },
+          "consultationTimeOptions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "example": [
+              15,
+              30
+            ]
+          }
+        }
+      },
+      "DoctorScheduleSlot": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "string",
+            "example": "10:00"
+          },
+          "isBooked": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "DoctorScheduleItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6801b2a8360d88b6e145df90"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "doctorUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df01"
+          },
+          "doctorName": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-04-02"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "10:00"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:45"
+          },
+          "consultationTime": {
+            "type": "integer",
+            "example": 15
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DoctorScheduleSlot"
+            }
+          },
+          "totalSlots": {
+            "type": "integer",
+            "example": 3
+          },
+          "bookedSlots": {
+            "type": "integer",
+            "example": 1
+          },
+          "availableSlots": {
+            "type": "integer",
+            "example": 2
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateDoctorScheduleRequest": {
+        "type": "object",
+        "required": [
+          "doctorId",
+          "department",
+          "date",
+          "startTime",
+          "endTime",
+          "consultationTime"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-04-02"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "10:00"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "10:45"
+          },
+          "consultationTime": {
+            "type": "integer",
+            "example": 15
+          }
+        }
+      },
+      "ScheduleSummaryData": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-04-02"
+          },
+          "totalSchedules": {
+            "type": "integer",
+            "example": 4
+          },
+          "totalSlots": {
+            "type": "integer",
+            "example": 16
+          },
+          "bookedSlots": {
+            "type": "integer",
+            "example": 5
+          },
+          "availableSlots": {
+            "type": "integer",
+            "example": 11
+          }
+        }
+      },
+      "AssignPatientTokenRequest": {
+        "type": "object",
+        "required": [
+          "patientName",
+          "dob",
+          "bloodGroup",
+          "contact",
+          "department"
+        ],
+        "properties": {
+          "patientName": {
+            "type": "string",
+            "example": "Ravi Kumar"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "example": "1998-06-10"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "example": "B+"
+          },
+          "aadhaar": {
+            "type": "string",
+            "nullable": true,
+            "example": "123456789012"
+          },
+          "contact": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "example": "2026-04-02"
+          },
+          "doctorId": {
+            "type": "string",
+            "nullable": true,
+            "example": "67f0b2a8360d88b6e145df81"
+          }
+        }
+      },
+      "PatientTokenItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6801c2a8360d88b6e145df90"
+          },
+          "scheduleId": {
+            "type": "string",
+            "example": "6801b2a8360d88b6e145df90"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "doctorUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df01"
+          },
+          "tokenNumber": {
+            "type": "integer",
+            "example": 1
+          },
+          "patientName": {
+            "type": "string",
+            "example": "Ravi Kumar"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "example": "1998-06-10"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "example": "B+"
+          },
+          "aadhaar": {
+            "type": "string",
+            "example": "123456789012"
+          },
+          "contact": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "doctorName": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-04-02"
+          },
+          "time": {
+            "type": "string",
+            "example": "10:00"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAtDisplay": {
+            "type": "string",
+            "example": "02/04/2026, 10:05 am"
+          }
+        }
+      },
+      "AssignPatientTokenResponseData": {
+        "type": "object",
+        "properties": {
+          "assignment": {
+            "type": "object",
+            "properties": {
+              "tokenNumber": {
+                "type": "integer",
+                "example": 1
+              },
+              "doctorName": {
+                "type": "string",
+                "example": "Dr Priya Sharma"
+              },
+              "department": {
+                "type": "string",
+                "example": "Cardiology"
+              },
+              "date": {
+                "type": "string",
+                "format": "date",
+                "example": "2026-04-02"
+              },
+              "time": {
+                "type": "string",
+                "example": "10:00"
+              }
+            }
+          },
+          "token": {
+            "$ref": "#/components/schemas/PatientTokenItem"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/DoctorScheduleItem"
           }
         }
       }
@@ -1859,6 +2236,516 @@
         "responses": {
           "200": {
             "description": "Hospital department updated successfully"
+          }
+        }
+      }
+    },
+    "/doctor-schedules/bootstrap": {
+      "get": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Get schedule bootstrap data",
+        "description": "Returns hospital info, department choices, approved doctors for that hospital, and consultation time options for the doctor schedule frontend.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule bootstrap data fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Schedule bootstrap data fetched successfully",
+                  "data": {
+                    "hospital": {
+                      "id": "67f0b2a8360d88b6e145df90",
+                      "userId": "67f0b2a8360d88b6e145df10",
+                      "name": "Metro Care Hospital",
+                      "departments": [
+                        "Cardiology",
+                        "Neurology"
+                      ],
+                      "status": "approved"
+                    },
+                    "departments": [
+                      "Cardiology",
+                      "Dermatology",
+                      "General Medicine"
+                    ],
+                    "doctors": [
+                      {
+                        "id": "67f0b2a8360d88b6e145df81",
+                        "userId": "67f0b2a8360d88b6e145df01",
+                        "name": "Dr Priya Sharma",
+                        "email": "priya@example.com",
+                        "phone": "+91-9876543210",
+                        "department": "Cardiology",
+                        "status": "approved"
+                      }
+                    ],
+                    "consultationTimeOptions": [
+                      15,
+                      30
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/doctor-schedules/summary": {
+      "get": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Get schedule summary",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Defaults to the current server date in YYYY-MM-DD format."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor schedule summary fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor schedule summary fetched successfully",
+                  "data": {
+                    "date": "2026-04-02",
+                    "totalSchedules": 4,
+                    "totalSlots": 16,
+                    "bookedSlots": 5,
+                    "availableSlots": 11
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/doctor-schedules/tokens": {
+      "get": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "List patient tokens",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "doctorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Patient tokens fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Patient tokens fetched successfully",
+                  "data": [
+                    {
+                      "id": "6801c2a8360d88b6e145df90",
+                      "scheduleId": "6801b2a8360d88b6e145df90",
+                      "hospitalId": "67f0b2a8360d88b6e145df90",
+                      "doctorId": "67f0b2a8360d88b6e145df81",
+                      "doctorUserId": "67f0b2a8360d88b6e145df01",
+                      "tokenNumber": 1,
+                      "patientName": "Ravi Kumar",
+                      "dob": "1998-06-10",
+                      "bloodGroup": "B+",
+                      "aadhaar": "123456789012",
+                      "contact": "9876543210",
+                      "department": "Cardiology",
+                      "doctorName": "Dr Priya Sharma",
+                      "date": "2026-04-02",
+                      "time": "10:00",
+                      "createdAt": "2026-04-02T04:35:00.000Z",
+                      "createdAtDisplay": "02/04/2026, 10:05 am"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/doctor-schedules": {
+      "get": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "List doctor schedules",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "doctorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor schedules fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor schedules fetched successfully",
+                  "data": [
+                    {
+                      "id": "6801b2a8360d88b6e145df90",
+                      "hospitalId": "67f0b2a8360d88b6e145df90",
+                      "doctorId": "67f0b2a8360d88b6e145df81",
+                      "doctorUserId": "67f0b2a8360d88b6e145df01",
+                      "doctorName": "Dr Priya Sharma",
+                      "department": "Cardiology",
+                      "date": "2026-04-02",
+                      "startTime": "10:00",
+                      "endTime": "10:45",
+                      "consultationTime": 15,
+                      "slots": [
+                        {
+                          "time": "10:00",
+                          "isBooked": false
+                        },
+                        {
+                          "time": "10:15",
+                          "isBooked": false
+                        },
+                        {
+                          "time": "10:30",
+                          "isBooked": false
+                        }
+                      ],
+                      "totalSlots": 3,
+                      "bookedSlots": 0,
+                      "availableSlots": 3
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Create doctor schedule",
+        "description": "Creates a doctor availability schedule for an approved doctor of the current hospital. The backend validates department match, past dates, slot generation, and overlapping time ranges.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDoctorScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Doctor schedule created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor schedule created successfully",
+                  "data": {
+                    "id": "6801b2a8360d88b6e145df90",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "doctorUserId": "67f0b2a8360d88b6e145df01",
+                    "doctorName": "Dr Priya Sharma",
+                    "department": "Cardiology",
+                    "date": "2026-04-02",
+                    "startTime": "10:00",
+                    "endTime": "10:45",
+                    "consultationTime": 15,
+                    "slots": [
+                      {
+                        "time": "10:00",
+                        "isBooked": false
+                      },
+                      {
+                        "time": "10:15",
+                        "isBooked": false
+                      },
+                      {
+                        "time": "10:30",
+                        "isBooked": false
+                      }
+                    ],
+                    "totalSlots": 3,
+                    "bookedSlots": 0,
+                    "availableSlots": 3
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Conflicting or duplicate schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "This doctor already has an overlapping schedule on the selected date",
+                  "errors": null
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/doctor-schedules/assign-token": {
+      "post": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Assign patient token",
+        "description": "Books the earliest available slot for the selected department and date, optionally restricted to a specific doctor, and persists a patient token record.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignPatientTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Patient token assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Patient token assigned successfully",
+                  "data": {
+                    "assignment": {
+                      "tokenNumber": 1,
+                      "doctorName": "Dr Priya Sharma",
+                      "department": "Cardiology",
+                      "date": "2026-04-02",
+                      "time": "10:00"
+                    },
+                    "token": {
+                      "id": "6801c2a8360d88b6e145df90",
+                      "scheduleId": "6801b2a8360d88b6e145df90",
+                      "hospitalId": "67f0b2a8360d88b6e145df90",
+                      "doctorId": "67f0b2a8360d88b6e145df81",
+                      "doctorUserId": "67f0b2a8360d88b6e145df01",
+                      "tokenNumber": 1,
+                      "patientName": "Ravi Kumar",
+                      "dob": "1998-06-10",
+                      "bloodGroup": "B+",
+                      "aadhaar": "123456789012",
+                      "contact": "9876543210",
+                      "department": "Cardiology",
+                      "doctorName": "Dr Priya Sharma",
+                      "date": "2026-04-02",
+                      "time": "10:00",
+                      "createdAt": "2026-04-02T04:35:00.000Z",
+                      "createdAtDisplay": "02/04/2026, 10:05 am"
+                    },
+                    "schedule": {
+                      "id": "6801b2a8360d88b6e145df90",
+                      "hospitalId": "67f0b2a8360d88b6e145df90",
+                      "doctorId": "67f0b2a8360d88b6e145df81",
+                      "doctorUserId": "67f0b2a8360d88b6e145df01",
+                      "doctorName": "Dr Priya Sharma",
+                      "department": "Cardiology",
+                      "date": "2026-04-02",
+                      "startTime": "10:00",
+                      "endTime": "10:45",
+                      "consultationTime": 15,
+                      "slots": [
+                        {
+                          "time": "10:00",
+                          "isBooked": true
+                        },
+                        {
+                          "time": "10:15",
+                          "isBooked": false
+                        },
+                        {
+                          "time": "10:30",
+                          "isBooked": false
+                        }
+                      ],
+                      "totalSlots": 3,
+                      "bookedSlots": 1,
+                      "availableSlots": 2
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
           }
         }
       }
