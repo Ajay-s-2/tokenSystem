@@ -176,16 +176,7 @@ const getApprovedDoctors = async ({ hospitalId, requesterId, requesterRole }) =>
 
   return {
     hospital: mapHospital(hospital),
-    doctors: doctors.map((doctor) => ({
-      id: doctor._id,
-      userId: doctor.userId,
-      name: doctor.name,
-      email: doctor.email,
-      phone: doctor.phone,
-      department: doctor.department,
-      status: doctor.status,
-      createdAt: doctor.createdAt,
-    })),
+    doctors: doctors.map(doctorService.mapApprovedDoctorForHospital),
   };
 };
 

@@ -19,6 +19,12 @@ router.post(
 );
 
 router.get(
+  "/",
+  roleMiddleware([ROLES.HOSPITAL]),
+  doctorController.listDoctors
+);
+
+router.get(
   "/:id",
   roleMiddleware([ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DOCTOR, ROLES.HOSPITAL]),
   doctorValidation.doctorIdValidation,
@@ -32,6 +38,14 @@ router.post(
   doctorValidation.selectHospitalValidation,
   validationMiddleware,
   doctorController.selectHospital
+);
+
+router.delete(
+  "/:id/select-hospital/:hospitalId",
+  roleMiddleware([ROLES.DOCTOR]),
+  doctorValidation.removeHospitalSelectionValidation,
+  validationMiddleware,
+  doctorController.removeHospitalSelection
 );
 
 module.exports = router;

@@ -56,6 +56,18 @@ const mapDoctor = (doctor) => ({
   updatedAt: doctor.updatedAt,
 });
 
+const mapApprovedDoctorForHospital = (doctor) => ({
+  id: doctor._id,
+  userId: doctor.userId,
+  name: doctor.name,
+  email: doctor.email,
+  phone: doctor.phone,
+  department: doctor.department,
+  status: doctor.status,
+  isApproved: true,
+  createdAt: doctor.createdAt,
+});
+
 const createDoctorProfile = async (payload, authUser) => {
   const user = await User.findOne({ _id: authUser.id, role: ROLES.DOCTOR });
   if (!user) {
@@ -102,6 +114,20 @@ const getDoctorById = async (doctorId) => {
   return mapDoctor(doctor);
 };
 
+const listApprovedDoctorsForHospitalUser = async (authUser) => {
+  if (!authUser?.id || authUser.role !== ROLES.HOSPITAL) {
+    throw createHttpError(403, "Only hospital users can fetch approved doctors");
+  }
+
+  const hospital = await Hospital.findOne({ userId: authUser.id });
+  if (!hospital) {
+    throw createHttpError(404, "Hospital profile not found for the current user");
+  }
+
+  const doctors = await Doctor.find({ approvedHospitals: hospital._id }).sort({ name: 1 }).lean();
+  return doctors.map(mapApprovedDoctorForHospital);
+};
+
 const selectHospital = async ({ doctorId, hospitalId, requesterId, requesterRole }) => {
   if (requesterRole !== ROLES.DOCTOR) {
     throw createHttpError(403, "Only doctors can select hospitals");
@@ -145,6 +171,43 @@ const selectHospital = async ({ doctorId, hospitalId, requesterId, requesterRole
   doctor.selectedHospitals.push(hospital._id);
   await doctor.save();
 
+  return getDoctorById(doctor._id);
+};
+
+const removeHospitalSelection = async ({ doctorId, hospitalId, requesterId, requesterRole }) => {
+  if (requesterRole !== ROLES.DOCTOR) {
+    throw createHttpError(403, "Only doctors can manage hospital selections");
+  }
+
+  const doctor = await Doctor.findOne({ $or: [{ _id: doctorId }, { userId: doctorId }] });
+  if (!doctor) {
+    throw createHttpError(404, "Doctor not found");
+  }
+
+  if (String(doctor.userId) !== String(requesterId)) {
+    throw createHttpError(403, "You can only update your own doctor profile");
+  }
+
+  const hasSelection =
+    doctor.selectedHospitals.some((selectedHospitalId) => String(selectedHospitalId) === String(hospitalId)) ||
+    doctor.approvedHospitals.some((approvedHospitalId) => String(approvedHospitalId) === String(hospitalId)) ||
+    doctor.rejectedHospitals.some((rejectedHospitalId) => String(rejectedHospitalId) === String(hospitalId));
+
+  if (!hasSelection) {
+    throw createHttpError(404, "Hospital selection not found");
+  }
+
+  doctor.selectedHospitals = doctor.selectedHospitals.filter(
+    (selectedHospitalId) => String(selectedHospitalId) !== String(hospitalId)
+  );
+  doctor.approvedHospitals = doctor.approvedHospitals.filter(
+    (approvedHospitalId) => String(approvedHospitalId) !== String(hospitalId)
+  );
+  doctor.rejectedHospitals = doctor.rejectedHospitals.filter(
+    (rejectedHospitalId) => String(rejectedHospitalId) !== String(hospitalId)
+  );
+
+  await doctor.save();
   return getDoctorById(doctor._id);
 };
 
@@ -240,10 +303,13 @@ const syncDoctorStatus = async (userId, status) => {
 module.exports = {
   createDoctorProfile,
   getDoctorById,
+  listApprovedDoctorsForHospitalUser,
+  removeHospitalSelection,
   selectHospital,
   getPendingDoctorsForHospital,
   getRejectedDoctorsForHospital,
   moveDoctorHospitalApproval,
   syncDoctorStatus,
   resolveDoctorByIdentifier,
+  mapApprovedDoctorForHospital,
 };

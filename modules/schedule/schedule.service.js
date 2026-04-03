@@ -11,11 +11,11 @@ const {
   isValidDateString,
   getTodayDateString,
   generateTimeSlots,
-  hasTimeOverlap,
   formatCreatedAt,
 } = require("./schedule.utils");
 
 const CONSULTATION_TIME_OPTIONS = [15, 30];
+const OVERLAP_ERROR_MESSAGE = "Schedule time overlaps with existing schedule";
 const TOKEN_STATUS = Object.freeze({
   NOT_STARTED: "NOT_STARTED",
   IN_PROGRESS: "inprogress",
@@ -217,9 +217,33 @@ const getBootstrapData = async (authUser) => {
       phone: doctor.phone,
       department: doctor.department,
       status: doctor.status,
+      isApproved: true,
     })),
     consultationTimeOptions: CONSULTATION_TIME_OPTIONS,
   };
+};
+
+const findOverlappingSchedule = async ({
+  hospitalId,
+  doctorId,
+  date,
+  startTime,
+  endTime,
+  excludeScheduleId,
+}) => {
+  const filters = {
+    hospitalId,
+    doctorId,
+    date,
+    startTime: { $lt: endTime },
+    endTime: { $gt: startTime },
+  };
+
+  if (excludeScheduleId) {
+    filters._id = { $ne: excludeScheduleId };
+  }
+
+  return DoctorSchedule.findOne(filters).lean();
 };
 
 const listSchedules = async (query, authUser) => {
@@ -308,18 +332,16 @@ const createSchedule = async (payload, authUser) => {
     );
   }
 
-  const existingSchedules = await DoctorSchedule.find({
+  const overlappingSchedule = await findOverlappingSchedule({
     hospitalId: hospital._id,
     doctorId: doctor._id,
     date,
-  }).lean();
+    startTime,
+    endTime,
+  });
 
-  const hasOverlap = existingSchedules.some((schedule) =>
-    hasTimeOverlap(startTime, endTime, schedule.startTime, schedule.endTime)
-  );
-
-  if (hasOverlap) {
-    throw createHttpError(409, "This doctor already has an overlapping schedule on the selected date");
+  if (overlappingSchedule) {
+    throw createHttpError(400, OVERLAP_ERROR_MESSAGE);
   }
 
   let createdSchedule;
@@ -339,7 +361,7 @@ const createSchedule = async (payload, authUser) => {
     });
   } catch (error) {
     if (error?.code === 11000) {
-      throw createHttpError(409, "An identical schedule already exists for this doctor");
+      throw createHttpError(400, OVERLAP_ERROR_MESSAGE);
     }
     throw error;
   }
@@ -384,19 +406,17 @@ const updateSchedule = async (scheduleId, payload, authUser) => {
     );
   }
 
-  const existingSchedules = await DoctorSchedule.find({
+  const overlappingSchedule = await findOverlappingSchedule({
     hospitalId: hospital._id,
     doctorId: doctor._id,
     date,
-    _id: { $ne: schedule._id },
-  }).lean();
+    startTime,
+    endTime,
+    excludeScheduleId: schedule._id,
+  });
 
-  const hasOverlap = existingSchedules.some((existingSchedule) =>
-    hasTimeOverlap(startTime, endTime, existingSchedule.startTime, existingSchedule.endTime)
-  );
-
-  if (hasOverlap) {
-    throw createHttpError(409, "This doctor already has an overlapping schedule on the selected date");
+  if (overlappingSchedule) {
+    throw createHttpError(400, OVERLAP_ERROR_MESSAGE);
   }
 
   schedule.doctorId = doctor._id;
@@ -413,7 +433,7 @@ const updateSchedule = async (scheduleId, payload, authUser) => {
     await schedule.save();
   } catch (error) {
     if (error?.code === 11000) {
-      throw createHttpError(409, "An identical schedule already exists for this doctor");
+      throw createHttpError(400, OVERLAP_ERROR_MESSAGE);
     }
     throw error;
   }

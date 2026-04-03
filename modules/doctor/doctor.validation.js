@@ -24,8 +24,14 @@ const selectHospitalValidation = [
   body("hospitalId").isMongoId().withMessage("Valid hospital id is required"),
 ];
 
+const removeHospitalSelectionValidation = [
+  ...doctorIdValidation,
+  param("hospitalId").isMongoId().withMessage("Valid hospital id is required"),
+];
+
 module.exports = {
   createDoctorValidation,
   doctorIdValidation,
+  removeHospitalSelectionValidation,
   selectHospitalValidation,
 };

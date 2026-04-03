@@ -10,6 +10,15 @@ const createDoctor = async (req, res) => {
   }
 };
 
+const listDoctors = async (req, res) => {
+  try {
+    const doctors = await doctorService.listApprovedDoctorsForHospitalUser(req.user);
+    return sendSuccess(res, "Approved doctors fetched successfully", doctors);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 const getDoctorById = async (req, res) => {
   try {
     const doctor = await doctorService.getDoctorById(req.params.id);
@@ -34,8 +43,25 @@ const selectHospital = async (req, res) => {
   }
 };
 
+const removeHospitalSelection = async (req, res) => {
+  try {
+    const doctor = await doctorService.removeHospitalSelection({
+      doctorId: req.params.id,
+      hospitalId: req.params.hospitalId,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Hospital selection removed successfully", doctor);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 module.exports = {
   createDoctor,
+  listDoctors,
   getDoctorById,
+  removeHospitalSelection,
   selectHospital,
 };
