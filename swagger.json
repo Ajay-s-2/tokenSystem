@@ -33,6 +33,14 @@
       "description": "Doctor scheduling, availability summaries, and patient token assignment APIs."
     },
     {
+      "name": "Log Module",
+      "description": "Frontend and backend log persistence APIs."
+    },
+    {
+      "name": "User Module",
+      "description": "Authenticated user profile APIs."
+    },
+    {
       "name": "Admin Module",
       "description": "Admin approval, filtering, pagination, and subscription management APIs."
     },
@@ -188,6 +196,18 @@
           "otp": {
             "type": "string",
             "example": "123456"
+          }
+        }
+      },
+      "ResendOtpRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "priya@example.com"
           }
         }
       },
@@ -560,6 +580,20 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "HospitalListResponseData": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HospitalItem"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         }
       },
@@ -940,7 +974,8 @@
         "properties": {
           "doctorId": {
             "type": "string",
-            "example": "67f0b2a8360d88b6e145df81"
+            "example": "67f0b2a8360d88b6e145df81",
+            "description": "Doctor profile id is preferred. The backend also accepts the doctor userId for frontend compatibility."
           },
           "department": {
             "type": "string",
@@ -1036,7 +1071,27 @@
           "doctorId": {
             "type": "string",
             "nullable": true,
-            "example": "67f0b2a8360d88b6e145df81"
+            "example": "67f0b2a8360d88b6e145df81",
+            "description": "Optional doctor profile id. The backend also accepts the doctor userId for frontend compatibility."
+          }
+        }
+      },
+      "UpdatePatientTokenStatusRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "inprogress",
+              "COMPLETED",
+              "CALLING"
+            ],
+            "example": "inprogress",
+            "description": "Preferred values are NOT_STARTED, inprogress, and COMPLETED. CALLING is also accepted as a compatibility alias and is returned by the backend for in-progress tokens."
           }
         }
       },
@@ -1105,6 +1160,15 @@
             "type": "string",
             "example": "10:00"
           },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_STARTED",
+              "CALLING",
+              "COMPLETED"
+            ],
+            "example": "CALLING"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1149,6 +1213,220 @@
           },
           "schedule": {
             "$ref": "#/components/schemas/DoctorScheduleItem"
+          }
+        }
+      },
+      "UserMeResponseData": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "67f0b2a8360d88b6e145df01"
+              },
+              "name": {
+                "type": "string",
+                "example": "Dr Priya Sharma"
+              },
+              "email": {
+                "type": "string",
+                "example": "priya@example.com"
+              },
+              "role": {
+                "type": "string",
+                "example": "doctor"
+              },
+              "loginStatus": {
+                "type": "string",
+                "example": "APPROVED"
+              },
+              "approvalStatus": {
+                "type": "string",
+                "example": "approved"
+              },
+              "onboardingStatus": {
+                "type": "string",
+                "example": "ONBOARDED"
+              },
+              "isEmailVerified": {
+                "type": "boolean",
+                "example": true
+              },
+              "departmentId": {
+                "type": "string",
+                "nullable": true,
+                "example": "DEP001"
+              },
+              "departmentName": {
+                "type": "string",
+                "nullable": true,
+                "example": "Cardiology"
+              }
+            }
+          },
+          "profile": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DoctorItem"
+              },
+              {
+                "$ref": "#/components/schemas/HospitalItem"
+              }
+            ]
+          }
+        }
+      },
+      "CreateLogRequest": {
+        "type": "object",
+        "required": [
+          "type",
+          "message"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "info",
+              "success",
+              "warn",
+              "error"
+            ],
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Unable to save the doctor schedule."
+          },
+          "source": {
+            "type": "string",
+            "nullable": true,
+            "example": "doctor-schedule"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "frontend",
+              "backend",
+              "system"
+            ],
+            "example": "frontend"
+          },
+          "data": {
+            "nullable": true,
+            "example": {
+              "doctorId": "67f0b2a8360d88b6e145df81",
+              "date": "2026-04-02",
+              "error": "This doctor already has an overlapping schedule on the selected date"
+            }
+          }
+        }
+      },
+      "LogItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6801e2a8360d88b6e145df90"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "info",
+              "success",
+              "warn",
+              "error"
+            ],
+            "example": "error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Failed to update status"
+          },
+          "source": {
+            "type": "string",
+            "nullable": true,
+            "example": "patient-entry"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "frontend",
+              "backend",
+              "system"
+            ],
+            "example": "frontend"
+          },
+          "data": {
+            "nullable": true
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true,
+            "example": "67f0b2a8360d88b6e145df10"
+          },
+          "userRole": {
+            "type": "string",
+            "nullable": true,
+            "example": "hospital"
+          },
+          "requestMethod": {
+            "type": "string",
+            "nullable": true,
+            "example": "POST"
+          },
+          "requestPath": {
+            "type": "string",
+            "nullable": true,
+            "example": "/api/logs"
+          },
+          "statusCode": {
+            "type": "integer",
+            "nullable": true,
+            "example": 201
+          },
+          "ipAddress": {
+            "type": "string",
+            "nullable": true,
+            "example": "::1"
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true,
+            "example": "Mozilla/5.0"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LogListResponseData": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LogItem"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "IdOnlyResponseData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6801b2a8360d88b6e145df90"
           }
         }
       }
@@ -1454,6 +1732,157 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/auth/resend-register-otp": {
+      "post": {
+        "tags": [
+          "Auth Module"
+        ],
+        "summary": "Resend registration OTP",
+        "description": "Generates and sends a fresh OTP for completing email verification after registration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration OTP resent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "A new registration OTP has been sent.",
+                  "data": null
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/auth/resend-login-otp": {
+      "post": {
+        "tags": [
+          "Auth Module"
+        ],
+        "summary": "Resend login OTP",
+        "description": "Generates and sends a fresh OTP for completing login for already approved and email-verified users.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login OTP resent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "A new login OTP has been sent.",
+                  "data": null
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "User Module"
+        ],
+        "summary": "Get current authenticated user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "User profile fetched",
+                  "data": {
+                    "user": {
+                      "id": "67f0b2a8360d88b6e145df01",
+                      "name": "Dr Priya Sharma",
+                      "email": "priya@example.com",
+                      "role": "doctor",
+                      "loginStatus": "APPROVED",
+                      "approvalStatus": "approved",
+                      "onboardingStatus": "ONBOARDED",
+                      "isEmailVerified": true,
+                      "departmentId": null,
+                      "departmentName": "Cardiology"
+                    },
+                    "profile": {
+                      "id": "67f0b2a8360d88b6e145df81",
+                      "userId": "67f0b2a8360d88b6e145df01",
+                      "name": "Dr Priya Sharma",
+                      "email": "priya@example.com",
+                      "phone": "+91-9876543210",
+                      "department": "Cardiology",
+                      "status": "approved"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -1786,6 +2215,107 @@
       }
     },
     "/hospitals": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "List hospitals",
+        "description": "Lists hospitals with optional approval-status filtering, sorting, and pagination.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Examples: name, -createdAt"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospitals fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Hospitals fetched successfully",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "67f0b2a8360d88b6e145df90",
+                        "userId": "67f0b2a8360d88b6e145df10",
+                        "name": "Metro Care Hospital",
+                        "location": "Bengaluru",
+                        "phone": "+91-9988776655",
+                        "email": "metro@example.com",
+                        "departments": [
+                          "Cardiology",
+                          "Orthopedics"
+                        ],
+                        "status": "approved",
+                        "subscription_amount": 1200
+                      }
+                    ],
+                    "pagination": {
+                      "page": 1,
+                      "limit": 10,
+                      "total": 1,
+                      "totalPages": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
       "post": {
         "tags": [
           "Hospital Module"
@@ -1946,6 +2476,86 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/approved-doctors": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "List approved doctors for hospital",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved doctors fetched successfully"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/rejected-doctors": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "List rejected doctors for hospital",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rejected doctors fetched successfully"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -2434,6 +3044,7 @@
                       "doctorName": "Dr Priya Sharma",
                       "date": "2026-04-02",
                       "time": "10:00",
+                      "status": "NOT_STARTED",
                       "createdAt": "2026-04-02T04:35:00.000Z",
                       "createdAtDisplay": "02/04/2026, 10:05 am"
                     }
@@ -2641,6 +3252,153 @@
         }
       }
     },
+    "/doctor-schedules/{scheduleId}": {
+      "patch": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Update doctor schedule",
+        "description": "Updates an existing doctor schedule for the current hospital. Schedules that already have assigned patient tokens cannot be edited.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDoctorScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor schedule updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor schedule updated successfully",
+                  "data": {
+                    "id": "6801b2a8360d88b6e145df90",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "doctorUserId": "67f0b2a8360d88b6e145df01",
+                    "doctorName": "Dr Priya Sharma",
+                    "department": "Cardiology",
+                    "date": "2026-04-02",
+                    "startTime": "11:00",
+                    "endTime": "11:45",
+                    "consultationTime": 15,
+                    "slots": [
+                      {
+                        "time": "11:00",
+                        "isBooked": false
+                      },
+                      {
+                        "time": "11:15",
+                        "isBooked": false
+                      },
+                      {
+                        "time": "11:30",
+                        "isBooked": false
+                      }
+                    ],
+                    "totalSlots": 3,
+                    "bookedSlots": 0,
+                    "availableSlots": 3
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Schedule cannot be updated because it conflicts or already has tokens assigned"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Delete doctor schedule",
+        "description": "Deletes an existing doctor schedule for the current hospital. Schedules that already have assigned patient tokens cannot be deleted.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor schedule deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor schedule deleted successfully",
+                  "data": {
+                    "id": "6801b2a8360d88b6e145df90"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Schedule cannot be deleted because patient tokens are already assigned"
+          }
+        }
+      }
+    },
     "/doctor-schedules/assign-token": {
       "post": {
         "tags": [
@@ -2698,6 +3456,7 @@
                       "doctorName": "Dr Priya Sharma",
                       "date": "2026-04-02",
                       "time": "10:00",
+                      "status": "NOT_STARTED",
                       "createdAt": "2026-04-02T04:35:00.000Z",
                       "createdAtDisplay": "02/04/2026, 10:05 am"
                     },
@@ -2730,6 +3489,341 @@
                       "bookedSlots": 1,
                       "availableSlots": 2
                     }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/doctor-schedules/tokens/{tokenId}/status": {
+      "patch": {
+        "tags": [
+          "Schedule Module"
+        ],
+        "summary": "Update patient token status",
+        "description": "Updates the lifecycle state of a patient token. Preferred request values are NOT_STARTED, inprogress, and COMPLETED. The backend also accepts CALLING as a compatibility alias and returns CALLING for in-progress tokens.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePatientTokenStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patient token status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Patient token status updated successfully",
+                  "data": {
+                    "id": "6801c2a8360d88b6e145df90",
+                    "scheduleId": "6801b2a8360d88b6e145df90",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "doctorUserId": "67f0b2a8360d88b6e145df01",
+                    "tokenNumber": 1,
+                    "patientName": "Ravi Kumar",
+                    "dob": "1998-06-10",
+                    "bloodGroup": "B+",
+                    "aadhaar": "123456789012",
+                    "contact": "9876543210",
+                    "department": "Cardiology",
+                    "doctorName": "Dr Priya Sharma",
+                    "date": "2026-04-02",
+                    "time": "10:00",
+                    "status": "CALLING",
+                    "createdAt": "2026-04-02T04:35:00.000Z",
+                    "createdAtDisplay": "02/04/2026, 10:05 am"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/logs": {
+      "post": {
+        "tags": [
+          "Log Module"
+        ],
+        "summary": "Create log entry",
+        "description": "Persists a frontend or backend log entry in MongoDB. This endpoint is public so pre-login frontend events can also be captured; if a valid bearer token is present, user metadata is attached automatically.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLogRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Log saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Log saved successfully",
+                  "data": {
+                    "id": "6801e2a8360d88b6e145df90",
+                    "type": "error",
+                    "message": "Unable to generate the patient token.",
+                    "source": "patient-entry",
+                    "origin": "frontend",
+                    "data": {
+                      "department": "Cardiology",
+                      "error": "No availability found in Cardiology for 2026-04-03"
+                    },
+                    "userId": "67f0b2a8360d88b6e145df10",
+                    "userRole": "hospital",
+                    "requestMethod": "POST",
+                    "requestPath": "/api/logs",
+                    "statusCode": null,
+                    "ipAddress": "::1",
+                    "userAgent": "Mozilla/5.0"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Log Module"
+        ],
+        "summary": "List saved logs",
+        "description": "Lists MongoDB-backed logs with optional filtering by type, origin, source, and search term. Admin or super admin access is required.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "info",
+                "success",
+                "warn",
+                "error"
+              ]
+            }
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "frontend",
+                "backend",
+                "system"
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Examples: -createdAt, type, source"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logs fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Logs fetched successfully",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "6801e2a8360d88b6e145df90",
+                        "type": "error",
+                        "message": "Failed to update status",
+                        "source": "patient-entry",
+                        "origin": "frontend",
+                        "data": {
+                          "tokenId": "6801c2a8360d88b6e145df90",
+                          "status": "COMPLETED"
+                        },
+                        "userId": "67f0b2a8360d88b6e145df10",
+                        "userRole": "hospital",
+                        "requestMethod": "POST",
+                        "requestPath": "/api/logs",
+                        "statusCode": null,
+                        "ipAddress": "::1",
+                        "userAgent": "Mozilla/5.0",
+                        "createdAt": "2026-04-03T10:15:00.000Z",
+                        "updatedAt": "2026-04-03T10:15:00.000Z"
+                      }
+                    ],
+                    "pagination": {
+                      "page": 1,
+                      "limit": 10,
+                      "total": 1,
+                      "totalPages": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/logs/{id}": {
+      "delete": {
+        "tags": [
+          "Log Module"
+        ],
+        "summary": "Delete saved log",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Log deleted successfully",
+                  "data": {
+                    "id": "6801e2a8360d88b6e145df90"
                   }
                 }
               }
@@ -3026,6 +4120,45 @@
       }
     },
     "/admin/subscription/default": {
+      "get": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Get default subscription amount",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default subscription fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Default subscription fetched successfully",
+                  "data": {
+                    "amount": 500,
+                    "currency": "INR",
+                    "interval": "month",
+                    "source": "configured"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
       "post": {
         "tags": [
           "Admin Module"

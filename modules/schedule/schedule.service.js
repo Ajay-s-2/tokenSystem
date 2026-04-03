@@ -16,6 +16,15 @@ const {
 } = require("./schedule.utils");
 
 const CONSULTATION_TIME_OPTIONS = [15, 30];
+const TOKEN_STATUS = Object.freeze({
+  NOT_STARTED: "NOT_STARTED",
+  IN_PROGRESS: "inprogress",
+  COMPLETED: "COMPLETED",
+});
+
+const TOKEN_STATUS_RESPONSE = Object.freeze({
+  CALLING: "CALLING",
+});
 
 const mapSchedule = (schedule) => {
   const source = typeof schedule.toObject === "function" ? schedule.toObject() : schedule;
@@ -66,6 +75,10 @@ const mapToken = (token) => {
     doctorName: source.doctorName,
     date: source.date,
     time: source.time,
+    status:
+      source.status === TOKEN_STATUS.IN_PROGRESS
+        ? TOKEN_STATUS_RESPONSE.CALLING
+        : source.status || TOKEN_STATUS.NOT_STARTED,
     createdAt: source.createdAt,
     createdAtDisplay: formatCreatedAt(source.createdAt),
   };
@@ -85,12 +98,13 @@ const getHospitalForRequester = async (authUser) => {
 };
 
 const getApprovedDoctorForHospital = async ({ hospitalId, doctorId }) => {
-  if (!mongoose.isValidObjectId(doctorId)) {
+  const normalizedDoctorId = String(doctorId || "").trim();
+  if (!mongoose.isValidObjectId(normalizedDoctorId)) {
     throw createHttpError(400, "Invalid doctor id");
   }
 
   const doctor = await Doctor.findOne({
-    _id: doctorId,
+    $or: [{ _id: normalizedDoctorId }, { userId: normalizedDoctorId }],
     approvedHospitals: hospitalId,
   });
 
@@ -99,6 +113,62 @@ const getApprovedDoctorForHospital = async ({ hospitalId, doctorId }) => {
   }
 
   return doctor;
+};
+
+const getScheduleForHospital = async ({ scheduleId, hospitalId }) => {
+  if (!mongoose.isValidObjectId(scheduleId)) {
+    throw createHttpError(400, "Invalid schedule id");
+  }
+
+  const schedule = await DoctorSchedule.findOne({
+    _id: scheduleId,
+    hospitalId,
+  });
+
+  if (!schedule) {
+    throw createHttpError(404, "Doctor schedule not found");
+  }
+
+  return schedule;
+};
+
+const hasAssignedTokens = async (schedule) => {
+  if (!schedule) return false;
+
+  const hasBookedSlot = (schedule.slots || []).some(
+    (slot) => slot.isBooked || slot.patientTokenId != null
+  );
+
+  if (hasBookedSlot) {
+    return true;
+  }
+
+  return Boolean(
+    await PatientToken.exists({
+      scheduleId: schedule._id,
+    })
+  );
+};
+
+const normalizeTokenStatus = (value) => {
+  const normalizedValue = String(value || "").trim();
+
+  if (normalizedValue === TOKEN_STATUS.NOT_STARTED) {
+    return TOKEN_STATUS.NOT_STARTED;
+  }
+
+  if (normalizedValue === TOKEN_STATUS.COMPLETED) {
+    return TOKEN_STATUS.COMPLETED;
+  }
+
+  if (
+    normalizedValue === TOKEN_STATUS_RESPONSE.CALLING ||
+    normalizedValue.toLowerCase() === TOKEN_STATUS.IN_PROGRESS
+  ) {
+    return TOKEN_STATUS.IN_PROGRESS;
+  }
+
+  throw createHttpError(400, "status must be one of NOT_STARTED, inprogress, COMPLETED");
 };
 
 const ensureValidScheduleDate = (date) => {
@@ -171,7 +241,7 @@ const listSchedules = async (query, authUser) => {
     if (!mongoose.isValidObjectId(query.doctorId)) {
       throw createHttpError(400, "doctorId must be a valid mongo id");
     }
-    filters.doctorId = query.doctorId;
+    filters.$or = [{ doctorId: query.doctorId }, { doctorUserId: query.doctorId }];
   }
 
   const schedules = await DoctorSchedule.find(filters).sort({
@@ -277,6 +347,80 @@ const createSchedule = async (payload, authUser) => {
   return mapSchedule(createdSchedule);
 };
 
+const updateSchedule = async (scheduleId, payload, authUser) => {
+  const hospital = await getHospitalForRequester(authUser);
+  const schedule = await getScheduleForHospital({
+    scheduleId,
+    hospitalId: hospital._id,
+  });
+
+  if (await hasAssignedTokens(schedule)) {
+    throw createHttpError(
+      409,
+      "Cannot update a schedule that already has patient tokens assigned"
+    );
+  }
+
+  const doctor = await getApprovedDoctorForHospital({
+    hospitalId: hospital._id,
+    doctorId: payload.doctorId,
+  });
+
+  const date = ensureValidScheduleDate(payload.date);
+  const department = String(payload.department || "").trim();
+  const startTime = String(payload.startTime || "").trim();
+  const endTime = String(payload.endTime || "").trim();
+  const consultationTime = Number(payload.consultationTime);
+
+  if (doctor.department !== department) {
+    throw createHttpError(400, "Selected doctor does not belong to this department");
+  }
+
+  const slots = generateTimeSlots(startTime, endTime, consultationTime);
+  if (slots.length === 0) {
+    throw createHttpError(
+      400,
+      "Choose a valid time range and consultation time that creates at least one slot"
+    );
+  }
+
+  const existingSchedules = await DoctorSchedule.find({
+    hospitalId: hospital._id,
+    doctorId: doctor._id,
+    date,
+    _id: { $ne: schedule._id },
+  }).lean();
+
+  const hasOverlap = existingSchedules.some((existingSchedule) =>
+    hasTimeOverlap(startTime, endTime, existingSchedule.startTime, existingSchedule.endTime)
+  );
+
+  if (hasOverlap) {
+    throw createHttpError(409, "This doctor already has an overlapping schedule on the selected date");
+  }
+
+  schedule.doctorId = doctor._id;
+  schedule.doctorUserId = doctor.userId;
+  schedule.doctorName = doctor.name;
+  schedule.department = department;
+  schedule.date = date;
+  schedule.startTime = startTime;
+  schedule.endTime = endTime;
+  schedule.consultationTime = consultationTime;
+  schedule.slots = slots;
+
+  try {
+    await schedule.save();
+  } catch (error) {
+    if (error?.code === 11000) {
+      throw createHttpError(409, "An identical schedule already exists for this doctor");
+    }
+    throw error;
+  }
+
+  return mapSchedule(schedule);
+};
+
 const listTokens = async (query, authUser) => {
   const hospital = await getHospitalForRequester(authUser);
   const filters = { hospitalId: hospital._id };
@@ -296,7 +440,7 @@ const listTokens = async (query, authUser) => {
     if (!mongoose.isValidObjectId(query.doctorId)) {
       throw createHttpError(400, "doctorId must be a valid mongo id");
     }
-    filters.doctorId = query.doctorId;
+    filters.$or = [{ doctorId: query.doctorId }, { doctorUserId: query.doctorId }];
   }
 
   const tokens = await PatientToken.find(filters).sort({ createdAt: -1 });
@@ -323,8 +467,8 @@ const assignToken = async (payload, authUser) => {
     if (!mongoose.isValidObjectId(doctorId)) {
       throw createHttpError(400, "doctorId must be a valid mongo id");
     }
-    await getApprovedDoctorForHospital({ hospitalId: hospital._id, doctorId });
-    scheduleFilters.doctorId = doctorId;
+    const doctor = await getApprovedDoctorForHospital({ hospitalId: hospital._id, doctorId });
+    scheduleFilters.doctorId = doctor._id;
   }
 
   const schedules = await DoctorSchedule.find(scheduleFilters).sort({
@@ -372,6 +516,7 @@ const assignToken = async (payload, authUser) => {
         bloodGroup: String(payload.bloodGroup || "").trim(),
         aadhaar: String(payload.aadhaar || "").trim(),
         contact: String(payload.contact || "").trim(),
+        status: TOKEN_STATUS.NOT_STARTED,
       });
     } catch (error) {
       await DoctorSchedule.updateOne(
@@ -418,11 +563,58 @@ const assignToken = async (payload, authUser) => {
   throw createHttpError(404, `No availability found in ${department} for ${date}`);
 };
 
+const deleteSchedule = async (scheduleId, authUser) => {
+  const hospital = await getHospitalForRequester(authUser);
+  const schedule = await getScheduleForHospital({
+    scheduleId,
+    hospitalId: hospital._id,
+  });
+
+  if (await hasAssignedTokens(schedule)) {
+    throw createHttpError(
+      409,
+      "Cannot delete a schedule that already has patient tokens assigned"
+    );
+  }
+
+  await DoctorSchedule.deleteOne({ _id: schedule._id });
+
+  return {
+    id: String(schedule._id),
+  };
+};
+
+const updateTokenStatus = async (tokenId, statusValue, authUser) => {
+  const hospital = await getHospitalForRequester(authUser);
+
+  if (!mongoose.isValidObjectId(tokenId)) {
+    throw createHttpError(400, "Invalid token id");
+  }
+
+  const nextStatus = normalizeTokenStatus(statusValue);
+  const token = await PatientToken.findOne({
+    _id: tokenId,
+    hospitalId: hospital._id,
+  });
+
+  if (!token) {
+    throw createHttpError(404, "Patient token not found");
+  }
+
+  token.status = nextStatus;
+  await token.save();
+
+  return mapToken(token);
+};
+
 module.exports = {
   getBootstrapData,
   listSchedules,
   getScheduleSummary,
   createSchedule,
+  updateSchedule,
   listTokens,
   assignToken,
+  deleteSchedule,
+  updateTokenStatus,
 };

@@ -36,6 +36,12 @@ const PatientTokenSchema = new mongoose.Schema(
     bloodGroup: { type: String, required: true, trim: true },
     aadhaar: { type: String, trim: true, default: "" },
     contact: { type: String, required: true, trim: true },
+    status: {
+      type: String,
+      enum: ["NOT_STARTED", "inprogress", "COMPLETED"],
+      default: "NOT_STARTED",
+      trim: true,
+    },
   },
   { timestamps: true }
 );

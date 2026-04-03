@@ -48,4 +48,25 @@ router.post(
   scheduleController.assignToken
 );
 
+router.patch(
+  "/tokens/:tokenId/status",
+  scheduleValidation.updateTokenStatusValidation,
+  validationMiddleware,
+  scheduleController.updateTokenStatus
+);
+
+router.patch(
+  "/:scheduleId",
+  scheduleValidation.updateScheduleValidation,
+  validationMiddleware,
+  scheduleController.updateSchedule
+);
+
+router.delete(
+  "/:scheduleId",
+  scheduleValidation.deleteScheduleValidation,
+  validationMiddleware,
+  scheduleController.deleteSchedule
+);
+
 module.exports = router;

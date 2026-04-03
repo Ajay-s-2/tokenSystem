@@ -1,4 +1,4 @@
-const { body, query } = require("express-validator");
+const { body, param, query } = require("express-validator");
 const { TIME_PATTERN } = require("./schedule.utils");
 
 const contactValidator = (value) => {
@@ -23,6 +23,29 @@ const optionalDepartmentQueryValidation = query("department")
   .trim()
   .notEmpty()
   .withMessage("department cannot be empty");
+
+const scheduleIdParamValidation = param("scheduleId")
+  .isMongoId()
+  .withMessage("scheduleId must be a valid mongo id");
+
+const tokenIdParamValidation = param("tokenId")
+  .isMongoId()
+  .withMessage("tokenId must be a valid mongo id");
+
+const tokenStatusValidator = body("status")
+  .trim()
+  .notEmpty()
+  .withMessage("status is required")
+  .custom((value) => {
+    const normalizedValue = String(value || "").trim();
+    return (
+      normalizedValue === "NOT_STARTED" ||
+      normalizedValue === "COMPLETED" ||
+      normalizedValue === "CALLING" ||
+      normalizedValue.toLowerCase() === "inprogress"
+    );
+  })
+  .withMessage("status must be one of NOT_STARTED, inprogress, COMPLETED");
 
 const listSchedulesValidation = [
   optionalDateQueryValidation,
@@ -55,6 +78,13 @@ const createScheduleValidation = [
     .withMessage("consultationTime must be a positive integer"),
 ];
 
+const updateScheduleValidation = [
+  scheduleIdParamValidation,
+  ...createScheduleValidation,
+];
+
+const deleteScheduleValidation = [scheduleIdParamValidation];
+
 const assignTokenValidation = [
   body("patientName").trim().notEmpty().withMessage("Patient name is required"),
   body("dob").isISO8601({ strict: true }).withMessage("Valid date of birth is required"),
@@ -76,10 +106,15 @@ const assignTokenValidation = [
     .withMessage("doctorId must be a valid mongo id"),
 ];
 
+const updateTokenStatusValidation = [tokenIdParamValidation, tokenStatusValidator];
+
 module.exports = {
   listSchedulesValidation,
   summaryValidation,
   listTokensValidation,
   createScheduleValidation,
+  updateScheduleValidation,
+  deleteScheduleValidation,
   assignTokenValidation,
+  updateTokenStatusValidation,
 };
