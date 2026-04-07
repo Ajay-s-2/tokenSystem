@@ -27,9 +27,34 @@ const updateDepartmentValidation = [
   body("departmentId").isMongoId().withMessage("Valid department id is required"),
 ];
 
+const departmentAssignmentListValidation = [
+  ...hospitalIdValidation,
+];
+
+const departmentAssignmentCreateValidation = [
+  ...hospitalIdValidation,
+  body("doctorId").isMongoId().withMessage("Valid doctor id is required"),
+  body("departmentId").isMongoId().withMessage("Valid department id is required"),
+];
+
+const departmentAssignmentUpdateValidation = [
+  ...hospitalIdValidation,
+  param("doctorId").isMongoId().withMessage("Valid doctor id is required"),
+  body("departmentId").isMongoId().withMessage("Valid department id is required"),
+];
+
+const departmentAssignmentDeleteValidation = [
+  ...hospitalIdValidation,
+  param("doctorId").isMongoId().withMessage("Valid doctor id is required"),
+];
+
 module.exports = {
   createHospitalValidation,
   hospitalIdValidation,
   doctorApprovalValidation,
   updateDepartmentValidation,
+  departmentAssignmentListValidation,
+  departmentAssignmentCreateValidation,
+  departmentAssignmentUpdateValidation,
+  departmentAssignmentDeleteValidation,
 };

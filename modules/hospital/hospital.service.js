@@ -3,6 +3,7 @@ const Hospital = require("./hospital.model");
 const Department = require("../department/department.model");
 const doctorService = require("../doctor/doctor.service");
 const Doctor = require("../doctor/doctor.model");
+const HospitalDoctorDepartmentAssignment = require("./hospital-doctor-department-assignment.model");
 const subscriptionService = require("../subscription/subscription.service");
 const User = require("../user/user.model");
 const { ONBOARDING_STATUS, ROLES, APPROVAL_STATUS } = require("../../shared/utils/constants");
@@ -158,6 +159,37 @@ const validateHospitalOwnership = async ({ hospitalId, requesterId, requesterRol
   return hospital;
 };
 
+const ensureDoctorApprovedForHospital = async ({ hospitalId, doctorId }) => {
+  if (!mongoose.isValidObjectId(doctorId)) {
+    throw createHttpError(400, "Invalid doctor id");
+  }
+
+  const doctor = await Doctor.findById(doctorId).lean();
+  if (!doctor) {
+    throw createHttpError(404, "Doctor not found");
+  }
+
+  const isApproved = (doctor.approvedHospitals || []).some(
+    (approvedHospitalId) => String(approvedHospitalId) === String(hospitalId)
+  );
+
+  if (!isApproved) {
+    throw createHttpError(400, "Doctor is not approved for this hospital");
+  }
+
+  return doctor;
+};
+
+const mapDepartmentAssignment = ({ assignment, doctor, department }) => ({
+  doctorId:
+    doctor?._id ||
+    assignment?.doctorId?._id ||
+    assignment?.doctorId ||
+    null,
+  doctorName: doctor?.name || assignment?.doctorId?.name || null,
+  department: department?.departmentName || assignment?.departmentId?.departmentName || null,
+});
+
 const getPendingDoctors = async ({ hospitalId, requesterId, requesterRole }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
   const pendingDoctors = await doctorService.getPendingDoctorsForHospital(hospital._id);
@@ -215,6 +247,114 @@ const getSubscription = async ({ hospitalId, requesterId, requesterRole }) =>
     requesterRole,
   });
 
+const getDepartmentAssignments = async ({ hospitalId, requesterId, requesterRole }) => {
+  const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+
+  const assignments = await HospitalDoctorDepartmentAssignment.find({
+    hospitalId: hospital._id,
+  })
+    .populate("doctorId", "name")
+    .populate("departmentId", "departmentName")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return {
+    items: assignments.map((assignment) =>
+      mapDepartmentAssignment({ assignment })
+    ),
+  };
+};
+
+const createDepartmentAssignment = async ({
+  hospitalId,
+  doctorId,
+  departmentId,
+  requesterId,
+  requesterRole,
+}) => {
+  const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+  const doctor = await ensureDoctorApprovedForHospital({
+    hospitalId: hospital._id,
+    doctorId,
+  });
+
+  if (!mongoose.isValidObjectId(departmentId)) {
+    throw createHttpError(400, "Invalid department id");
+  }
+
+  const department = await Department.findById(departmentId).lean();
+  if (!department) {
+    throw createHttpError(404, "Department not found");
+  }
+
+  await HospitalDoctorDepartmentAssignment.findOneAndUpdate(
+    { hospitalId: hospital._id, doctorId: doctor._id },
+    { $set: { departmentId: department._id } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  ).lean();
+
+  return mapDepartmentAssignment({ doctor, department });
+};
+
+const updateDepartmentAssignment = async ({
+  hospitalId,
+  doctorId,
+  departmentId,
+  requesterId,
+  requesterRole,
+}) => {
+  const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+  const doctor = await ensureDoctorApprovedForHospital({
+    hospitalId: hospital._id,
+    doctorId,
+  });
+
+  if (!mongoose.isValidObjectId(departmentId)) {
+    throw createHttpError(400, "Invalid department id");
+  }
+
+  const department = await Department.findById(departmentId).lean();
+  if (!department) {
+    throw createHttpError(404, "Department not found");
+  }
+
+  const existingAssignment = await HospitalDoctorDepartmentAssignment.findOne({
+    hospitalId: hospital._id,
+    doctorId: doctor._id,
+  }).lean();
+
+  if (!existingAssignment) {
+    throw createHttpError(404, "Department assignment not found");
+  }
+
+  await HospitalDoctorDepartmentAssignment.updateOne(
+    { _id: existingAssignment._id },
+    { $set: { departmentId: department._id } }
+  );
+
+  return mapDepartmentAssignment({ doctor, department });
+};
+
+const deleteDepartmentAssignment = async ({
+  hospitalId,
+  doctorId,
+  requesterId,
+  requesterRole,
+}) => {
+  const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+
+  const assignment = await HospitalDoctorDepartmentAssignment.findOneAndDelete({
+    hospitalId: hospital._id,
+    doctorId,
+  }).lean();
+
+  if (!assignment) {
+    throw createHttpError(404, "Department assignment not found");
+  }
+
+  return { success: true };
+};
+
 const syncHospitalStatus = async (userId, status) =>
   Hospital.findOneAndUpdate({ userId }, { status }, { returnDocument: "after" });
 
@@ -229,6 +369,10 @@ module.exports = {
   approveDoctor,
   rejectDoctor,
   getSubscription,
+  getDepartmentAssignments,
+  createDepartmentAssignment,
+  updateDepartmentAssignment,
+  deleteDepartmentAssignment,
   syncHospitalStatus,
   resolveHospitalByIdentifier,
 };

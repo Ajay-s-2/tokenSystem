@@ -2,6 +2,7 @@ const User = require("../user/user.model");
 const Doctor = require("../doctor/doctor.model");
 const Hospital = require("../hospital/hospital.model");
 const subscriptionService = require("../subscription/subscription.service");
+const DoctorSubscription = require("../doctor-subscription/doctor-subscription.model");
 const userRepository = require("../user/user.repository");
 const { LOGIN_STATUS, ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
@@ -210,6 +211,51 @@ const setHospitalSubscription = async ({ hospitalId, amount }) =>
     amount: Number(amount),
   });
 
+const mapDoctorSubscriptionRecord = ({ doctor, subscription }) => ({
+  id: doctor._id,
+  fullName: doctor.name,
+  hospitalCount: Array.isArray(doctor.approvedHospitals) ? doctor.approvedHospitals.length : 0,
+  ratePerHospital: subscription?.ratePerHospital ?? 0,
+});
+
+const getDoctorSubscriptions = async () => {
+  const doctors = await Doctor.find().sort({ name: 1 }).lean();
+  const doctorIds = doctors.map((doctor) => doctor._id);
+  const subscriptions = await DoctorSubscription.find({ doctorId: { $in: doctorIds } }).lean();
+  const subscriptionMap = new Map(
+    subscriptions.map((subscription) => [String(subscription.doctorId), subscription])
+  );
+
+  return {
+    items: doctors.map((doctor) =>
+      mapDoctorSubscriptionRecord({
+        doctor,
+        subscription: subscriptionMap.get(String(doctor._id)),
+      })
+    ),
+  };
+};
+
+const updateDoctorSubscription = async (doctorId, ratePerHospital) => {
+  const numericRate = Number(ratePerHospital);
+  if (Number.isNaN(numericRate) || numericRate < 0) {
+    throw createHttpError(400, "Rate per hospital must be a non-negative number");
+  }
+
+  const doctor = await Doctor.findById(doctorId).lean();
+  if (!doctor) {
+    throw createHttpError(404, "Doctor not found");
+  }
+
+  const subscription = await DoctorSubscription.findOneAndUpdate(
+    { doctorId: doctor._id },
+    { $set: { ratePerHospital: numericRate } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  ).lean();
+
+  return mapDoctorSubscriptionRecord({ doctor, subscription });
+};
+
 module.exports = {
   approveUser,
   rejectUser,
@@ -222,4 +268,6 @@ module.exports = {
   setDefaultSubscription,
   getDefaultSubscription,
   setHospitalSubscription,
+  getDoctorSubscriptions,
+  updateDoctorSubscription,
 };

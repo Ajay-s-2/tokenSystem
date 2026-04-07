@@ -1429,6 +1429,108 @@
             "example": "6801b2a8360d88b6e145df90"
           }
         }
+      },
+      "DoctorSubscriptionRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Dr A"
+          },
+          "hospitalCount": {
+            "type": "integer",
+            "example": 3
+          },
+          "ratePerHospital": {
+            "type": "number",
+            "example": 500
+          }
+        }
+      },
+      "DoctorSubscriptionListResponseData": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DoctorSubscriptionRecord"
+            }
+          }
+        }
+      },
+      "DoctorSubscriptionUpdateRequest": {
+        "type": "object",
+        "required": [
+          "ratePerHospital"
+        ],
+        "properties": {
+          "ratePerHospital": {
+            "type": "number",
+            "minimum": 0,
+            "example": 500
+          }
+        }
+      },
+      "HospitalDoctorDepartmentAssignmentRecord": {
+        "type": "object",
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "doctorName": {
+            "type": "string",
+            "example": "Dr John"
+          },
+          "department": {
+            "type": "string",
+            "example": "Dermatology"
+          }
+        }
+      },
+      "HospitalDoctorDepartmentAssignmentListResponseData": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HospitalDoctorDepartmentAssignmentRecord"
+            }
+          }
+        }
+      },
+      "HospitalDoctorDepartmentAssignmentUpsertRequest": {
+        "type": "object",
+        "required": [
+          "doctorId",
+          "departmentId"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "departmentId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          }
+        }
+      },
+      "HospitalDoctorDepartmentAssignmentUpdateRequest": {
+        "type": "object",
+        "required": [
+          "departmentId"
+        ],
+        "properties": {
+          "departmentId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          }
+        }
       }
     },
     "responses": {
@@ -2712,6 +2814,264 @@
                     "currency": "INR",
                     "interval": "month",
                     "source": "hospital_override"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/department-assignments": {
+      "get": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "List hospital doctor department assignments",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Department assignments fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Department assignments fetched successfully",
+                  "data": {
+                    "items": [
+                      {
+                        "doctorId": "67f0b2a8360d88b6e145df81",
+                        "doctorName": "Dr John",
+                        "department": "Dermatology"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Create or update a doctor department assignment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HospitalDoctorDepartmentAssignmentUpsertRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Department assignment saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Department assignment saved successfully",
+                  "data": {
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "doctorName": "Dr John",
+                    "department": "Dermatology"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/hospitals/{id}/department-assignments/{doctorId}": {
+      "patch": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Update a doctor department assignment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "doctorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HospitalDoctorDepartmentAssignmentUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Department assignment updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Department assignment updated successfully",
+                  "data": {
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "doctorName": "Dr John",
+                    "department": "Dermatology"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Hospital Module"
+        ],
+        "summary": "Delete a doctor department assignment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "doctorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Department assignment deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Department assignment deleted successfully",
+                  "data": {
+                    "success": true
                   }
                 }
               }
@@ -4248,6 +4608,118 @@
                   "data": {
                     "hospitalId": "67f0b2a8360d88b6e145df90",
                     "subscription_amount": 1200
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/doctor-subscriptions": {
+      "get": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "List doctor subscription records",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor subscriptions fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor subscriptions fetched successfully",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "67f0b2a8360d88b6e145df81",
+                        "fullName": "Dr A",
+                        "hospitalCount": 3,
+                        "ratePerHospital": 500
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/doctor-subscriptions/{doctorId}": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Update doctor subscription rate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doctorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DoctorSubscriptionUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor subscription updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Doctor subscription updated successfully",
+                  "data": {
+                    "id": "67f0b2a8360d88b6e145df81",
+                    "fullName": "Dr A",
+                    "hospitalCount": 3,
+                    "ratePerHospital": 500
                   }
                 }
               }

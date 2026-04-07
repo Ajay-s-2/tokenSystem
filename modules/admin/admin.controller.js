@@ -67,6 +67,27 @@ const setHospitalSubscription = async (req, res) => {
   }
 };
 
+const getDoctorSubscriptions = async (req, res) => {
+  try {
+    const data = await adminService.getDoctorSubscriptions();
+    return sendSuccess(res, "Doctor subscriptions fetched successfully", data);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const updateDoctorSubscription = async (req, res) => {
+  try {
+    const record = await adminService.updateDoctorSubscription(
+      req.params.doctorId,
+      req.body.ratePerHospital
+    );
+    return sendSuccess(res, "Doctor subscription updated successfully", record);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 const approveUser = async (req, res) => {
   try {
     const user = await adminService.approveUser(req.params.id);
@@ -111,6 +132,8 @@ module.exports = {
   setDefaultSubscription,
   getDefaultSubscription,
   setHospitalSubscription,
+  getDoctorSubscriptions,
+  updateDoctorSubscription,
   approveUser,
   rejectUser,
   onboardUser,

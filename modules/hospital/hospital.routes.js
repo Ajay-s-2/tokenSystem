@@ -80,6 +80,38 @@ router.get(
   hospitalController.getSubscription
 );
 
+router.get(
+  "/:id/department-assignments",
+  roleMiddleware([ROLES.HOSPITAL]),
+  hospitalValidation.departmentAssignmentListValidation,
+  validationMiddleware,
+  hospitalController.getDepartmentAssignments
+);
+
+router.post(
+  "/:id/department-assignments",
+  roleMiddleware([ROLES.HOSPITAL]),
+  hospitalValidation.departmentAssignmentCreateValidation,
+  validationMiddleware,
+  hospitalController.createDepartmentAssignment
+);
+
+router.patch(
+  "/:id/department-assignments/:doctorId",
+  roleMiddleware([ROLES.HOSPITAL]),
+  hospitalValidation.departmentAssignmentUpdateValidation,
+  validationMiddleware,
+  hospitalController.updateDepartmentAssignment
+);
+
+router.delete(
+  "/:id/department-assignments/:doctorId",
+  roleMiddleware([ROLES.HOSPITAL]),
+  hospitalValidation.departmentAssignmentDeleteValidation,
+  validationMiddleware,
+  hospitalController.deleteDepartmentAssignment
+);
+
 router.put(
   "/:id/department",
   roleMiddleware([ROLES.HOSPITAL, ROLES.ADMIN, ROLES.SUPER_ADMIN]),

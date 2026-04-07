@@ -1,4 +1,8 @@
-const mongoose = require("mongoose");
+const dns = require("dns");
+// FIX: Force reliable DNS for SRV lookups
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+const mongoose  = require("mongoose");
+
 
 const connectDB = async () => {
   const uri = process.env.MONGO_URI;
@@ -7,7 +11,9 @@ const connectDB = async () => {
   }
 
   mongoose.set("strictQuery", true);
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, {
+    family: 4, // Force IPv4
+  });
 
   console.log("MongoDB connected");
 };

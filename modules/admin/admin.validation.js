@@ -2,6 +2,7 @@ const { body, param, query } = require("express-validator");
 const { APPROVAL_STATUS } = require("../../shared/utils/constants");
 
 const amountValidationMessage = "Subscription amount must be a non-negative number";
+const ratePerHospitalValidationMessage = "Rate per hospital must be a non-negative number";
 
 const amountValidator = body("amount")
   .customSanitizer((value) => {
@@ -18,6 +19,27 @@ const amountValidator = body("amount")
     const numericValue = Number(value);
     if (Number.isNaN(numericValue) || numericValue < 0) {
       throw new Error(amountValidationMessage);
+    }
+
+    return true;
+  })
+  .customSanitizer((value) => Number(value));
+
+const ratePerHospitalValidator = body("ratePerHospital")
+  .customSanitizer((value) => {
+    if (typeof value === "string") {
+      return value.trim();
+    }
+    return value;
+  })
+  .custom((value) => {
+    if (value === "" || value === null || value === undefined) {
+      throw new Error(ratePerHospitalValidationMessage);
+    }
+
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue) || numericValue < 0) {
+      throw new Error(ratePerHospitalValidationMessage);
     }
 
     return true;
@@ -54,9 +76,15 @@ const hospitalSubscriptionValidation = [
   amountValidator,
 ];
 
+const doctorSubscriptionUpdateValidation = [
+  param("doctorId").isMongoId().withMessage("Valid doctor id is required"),
+  ratePerHospitalValidator,
+];
+
 module.exports = {
   listValidation,
   statusUpdateValidation,
   defaultSubscriptionValidation,
   hospitalSubscriptionValidation,
+  doctorSubscriptionUpdateValidation,
 };

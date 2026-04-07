@@ -49,6 +49,14 @@ router.post(
   adminController.setHospitalSubscription
 );
 
+router.get("/doctor-subscriptions", adminController.getDoctorSubscriptions);
+router.patch(
+  "/doctor-subscriptions/:doctorId",
+  adminValidation.doctorSubscriptionUpdateValidation,
+  validationMiddleware,
+  adminController.updateDoctorSubscription
+);
+
 router.patch("/users/:id/approve", adminController.approveUser);
 router.patch("/users/:id/reject", adminController.rejectUser);
 router.patch("/users/:id/onboard", adminController.onboardUser);

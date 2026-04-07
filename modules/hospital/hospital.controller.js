@@ -165,6 +165,87 @@ const getSubscription = async (req, res) => {
   }
 };
 
+const getDepartmentAssignments = async (req, res) => {
+  try {
+    const data = await hospitalService.getDepartmentAssignments({
+      hospitalId: req.params.id,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Department assignments fetched successfully", data);
+  } catch (error) {
+    return sendError(
+      res,
+      error.message || "Internal server error",
+      error.statusCode || 500,
+      error.errors || null
+    );
+  }
+};
+
+const createDepartmentAssignment = async (req, res) => {
+  try {
+    const assignment = await hospitalService.createDepartmentAssignment({
+      hospitalId: req.params.id,
+      doctorId: req.body.doctorId,
+      departmentId: req.body.departmentId,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Department assignment saved successfully", assignment, 201);
+  } catch (error) {
+    return sendError(
+      res,
+      error.message || "Internal server error",
+      error.statusCode || 500,
+      error.errors || null
+    );
+  }
+};
+
+const updateDepartmentAssignment = async (req, res) => {
+  try {
+    const assignment = await hospitalService.updateDepartmentAssignment({
+      hospitalId: req.params.id,
+      doctorId: req.params.doctorId,
+      departmentId: req.body.departmentId,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Department assignment updated successfully", assignment);
+  } catch (error) {
+    return sendError(
+      res,
+      error.message || "Internal server error",
+      error.statusCode || 500,
+      error.errors || null
+    );
+  }
+};
+
+const deleteDepartmentAssignment = async (req, res) => {
+  try {
+    const data = await hospitalService.deleteDepartmentAssignment({
+      hospitalId: req.params.id,
+      doctorId: req.params.doctorId,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Department assignment deleted successfully", data);
+  } catch (error) {
+    return sendError(
+      res,
+      error.message || "Internal server error",
+      error.statusCode || 500,
+      error.errors || null
+    );
+  }
+};
+
 module.exports = {
   listHospitals,
   createHospital,
@@ -176,4 +257,8 @@ module.exports = {
   approveDoctor,
   rejectDoctor,
   getSubscription,
+  getDepartmentAssignments,
+  createDepartmentAssignment,
+  updateDepartmentAssignment,
+  deleteDepartmentAssignment,
 };
