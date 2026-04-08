@@ -8,7 +8,7 @@ const DoctorSubscriptionSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    ratePerHospital: { type: Number, required: true, min: 0, default: 0 },
+    ratePerHospital: { type: Number, required: true, min: 500, default: 500 },
   },
   { timestamps: true, collection: "doctor_subscriptions" }
 );

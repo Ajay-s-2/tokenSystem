@@ -1,6 +1,7 @@
 const Doctor = require("./doctor.model");
 const User = require("../user/user.model");
 const Hospital = require("../hospital/hospital.model");
+const DoctorSubscription = require("../doctor-subscription/doctor-subscription.model");
 const { ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
 const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.util");
@@ -68,6 +69,33 @@ const mapApprovedDoctorForHospital = (doctor) => ({
   createdAt: doctor.createdAt,
 });
 
+const DOCTOR_SUBSCRIPTION_STEP = 500;
+
+const mapDoctorSubscriptionSummary = ({ doctor, subscription }) => {
+  const approvedCount = Array.isArray(doctor.approvedHospitals) ? doctor.approvedHospitals.length : 0;
+  const pendingCount = Array.isArray(doctor.selectedHospitals) ? doctor.selectedHospitals.length : 0;
+  const rejectedCount = Array.isArray(doctor.rejectedHospitals) ? doctor.rejectedHospitals.length : 0;
+  const ratePerHospital = subscription?.ratePerHospital ?? DOCTOR_SUBSCRIPTION_STEP;
+  const hospitalLimit = Math.max(1, Math.floor(ratePerHospital / DOCTOR_SUBSCRIPTION_STEP));
+  const usedHospitalSlots = approvedCount + pendingCount;
+  const remainingHospitalSlots = Math.max(0, hospitalLimit - usedHospitalSlots);
+
+  return {
+    doctorId: doctor._id,
+    userId: doctor.userId,
+    fullName: doctor.name,
+    ratePerHospital,
+    hospitalLimit,
+    usedHospitalSlots,
+    remainingHospitalSlots,
+    approvedHospitalCount: approvedCount,
+    pendingHospitalCount: pendingCount,
+    rejectedHospitalCount: rejectedCount,
+    currentTotal: approvedCount * ratePerHospital,
+    projectedTotal: (approvedCount + pendingCount) * ratePerHospital,
+  };
+};
+
 const createDoctorProfile = async (payload, authUser) => {
   const user = await User.findOne({ _id: authUser.id, role: ROLES.DOCTOR });
   if (!user) {
@@ -112,6 +140,26 @@ const getDoctorById = async (doctorId) => {
   }
 
   return mapDoctor(doctor);
+};
+
+const getDoctorSubscriptionSummary = async ({ doctorId, requesterId, requesterRole }) => {
+  const doctor = await resolveDoctorByIdentifier(doctorId);
+
+  if (!doctor) {
+    throw createHttpError(404, "Doctor not found");
+  }
+
+  const isDoctorSelf =
+    requesterRole === ROLES.DOCTOR && String(doctor.userId) === String(requesterId);
+  const isAdmin =
+    requesterRole === ROLES.ADMIN || requesterRole === ROLES.SUPER_ADMIN;
+
+  if (!isDoctorSelf && !isAdmin) {
+    throw createHttpError(403, "You can only view your own doctor subscription");
+  }
+
+  const subscription = await DoctorSubscription.findOne({ doctorId: doctor._id }).lean();
+  return mapDoctorSubscriptionSummary({ doctor, subscription });
 };
 
 const listApprovedDoctorsForHospitalUser = async (authUser) => {
@@ -163,6 +211,19 @@ const selectHospital = async ({ doctorId, hospitalId, requesterId, requesterRole
   );
   if (alreadySelected) {
     throw createHttpError(409, "Hospital already selected");
+  }
+
+  const subscription = await DoctorSubscription.findOne({ doctorId: doctor._id }).lean();
+  const hospitalLimit = Math.max(
+    1,
+    Math.floor((subscription?.ratePerHospital ?? DOCTOR_SUBSCRIPTION_STEP) / DOCTOR_SUBSCRIPTION_STEP)
+  );
+  const activeHospitalCount =
+    (Array.isArray(doctor.approvedHospitals) ? doctor.approvedHospitals.length : 0) +
+    (Array.isArray(doctor.selectedHospitals) ? doctor.selectedHospitals.length : 0);
+
+  if (activeHospitalCount >= hospitalLimit) {
+    throw createHttpError(400, `Hospital limit reached. Your plan allows ${hospitalLimit} hospital selections.`);
   }
 
   doctor.rejectedHospitals = doctor.rejectedHospitals.filter(
@@ -303,6 +364,7 @@ const syncDoctorStatus = async (userId, status) => {
 module.exports = {
   createDoctorProfile,
   getDoctorById,
+  getDoctorSubscriptionSummary,
   listApprovedDoctorsForHospitalUser,
   removeHospitalSelection,
   selectHospital,

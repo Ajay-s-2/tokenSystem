@@ -28,6 +28,20 @@ const getDoctorById = async (req, res) => {
   }
 };
 
+const getDoctorSubscriptionSummary = async (req, res) => {
+  try {
+    const summary = await doctorService.getDoctorSubscriptionSummary({
+      doctorId: req.params.id,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+
+    return sendSuccess(res, "Doctor subscription summary fetched successfully", summary);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 const selectHospital = async (req, res) => {
   try {
     const doctor = await doctorService.selectHospital({
@@ -62,6 +76,7 @@ module.exports = {
   createDoctor,
   listDoctors,
   getDoctorById,
+  getDoctorSubscriptionSummary,
   removeHospitalSelection,
   selectHospital,
 };

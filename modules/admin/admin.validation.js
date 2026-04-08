@@ -2,7 +2,7 @@ const { body, param, query } = require("express-validator");
 const { APPROVAL_STATUS } = require("../../shared/utils/constants");
 
 const amountValidationMessage = "Subscription amount must be a non-negative number";
-const ratePerHospitalValidationMessage = "Rate per hospital must be a non-negative number";
+const ratePerHospitalValidationMessage = "Subscription amount must be Rs 500 or more, in Rs 500 steps";
 
 const amountValidator = body("amount")
   .customSanitizer((value) => {
@@ -38,7 +38,7 @@ const ratePerHospitalValidator = body("ratePerHospital")
     }
 
     const numericValue = Number(value);
-    if (Number.isNaN(numericValue) || numericValue < 0) {
+    if (Number.isNaN(numericValue) || numericValue < 500 || numericValue % 500 !== 0) {
       throw new Error(ratePerHospitalValidationMessage);
     }
 

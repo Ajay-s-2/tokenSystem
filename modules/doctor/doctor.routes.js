@@ -32,6 +32,14 @@ router.get(
   doctorController.getDoctorById
 );
 
+router.get(
+  "/:id/subscription-summary",
+  roleMiddleware([ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.DOCTOR]),
+  doctorValidation.doctorIdValidation,
+  validationMiddleware,
+  doctorController.getDoctorSubscriptionSummary
+);
+
 router.post(
   "/:id/select-hospital",
   roleMiddleware([ROLES.DOCTOR]),

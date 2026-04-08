@@ -211,11 +211,13 @@ const setHospitalSubscription = async ({ hospitalId, amount }) =>
     amount: Number(amount),
   });
 
+const DOCTOR_SUBSCRIPTION_STEP = 500;
+
 const mapDoctorSubscriptionRecord = ({ doctor, subscription }) => ({
   id: doctor._id,
   fullName: doctor.name,
   hospitalCount: Array.isArray(doctor.approvedHospitals) ? doctor.approvedHospitals.length : 0,
-  ratePerHospital: subscription?.ratePerHospital ?? 0,
+  ratePerHospital: subscription?.ratePerHospital ?? DOCTOR_SUBSCRIPTION_STEP,
 });
 
 const getDoctorSubscriptions = async () => {
@@ -238,8 +240,8 @@ const getDoctorSubscriptions = async () => {
 
 const updateDoctorSubscription = async (doctorId, ratePerHospital) => {
   const numericRate = Number(ratePerHospital);
-  if (Number.isNaN(numericRate) || numericRate < 0) {
-    throw createHttpError(400, "Rate per hospital must be a non-negative number");
+  if (Number.isNaN(numericRate) || numericRate < DOCTOR_SUBSCRIPTION_STEP || numericRate % DOCTOR_SUBSCRIPTION_STEP !== 0) {
+    throw createHttpError(400, "Subscription amount must be Rs 500 or more, in Rs 500 steps");
   }
 
   const doctor = await Doctor.findById(doctorId).lean();
