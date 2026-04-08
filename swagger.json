@@ -652,6 +652,96 @@
           }
         }
       },
+      "AdminDoctorUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Dr Priya Sharma"
+          },
+          "gender": {
+            "type": "string",
+            "example": "female"
+          },
+          "dob": {
+            "type": "string",
+            "format": "date",
+            "example": "1990-04-20"
+          },
+          "blood_group": {
+            "type": "string",
+            "example": "O+"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9876543210"
+          },
+          "department": {
+            "type": "string",
+            "example": "Cardiology"
+          },
+          "specialization": {
+            "type": "string",
+            "example": "Cardiologist"
+          },
+          "medicalRegistrationId": {
+            "type": "string",
+            "example": "MED-IND-12345"
+          }
+        }
+      },
+      "AdminHospitalUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Lotus Heart Hospital"
+          },
+          "location": {
+            "type": "string",
+            "example": "Bengaluru"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+91-9876543210"
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Cardiology",
+              "Neurology"
+            ]
+          }
+        }
+      },
+      "EmailChangeRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "new.email@example.com"
+          }
+        }
+      },
+      "EmailChangeVerifyRequest": {
+        "type": "object",
+        "required": [
+          "otp"
+        ],
+        "properties": {
+          "otp": {
+            "type": "string",
+            "example": "123456"
+          }
+        }
+      },
       "AdminEntityItem": {
         "type": "object",
         "properties": {
@@ -693,6 +783,26 @@
             "type": "string",
             "nullable": true,
             "example": "Cardiology"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "example": "female"
+          },
+          "specialization": {
+            "type": "string",
+            "nullable": true,
+            "example": "Cardiologist"
+          },
+          "medicalRegistrationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "MED-IND-12345"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "nullable": true,
+            "example": "O+"
           },
           "location": {
             "type": "string",
@@ -4372,6 +4482,334 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/doctors/{id}": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Update doctor profile",
+        "description": "Updates doctor profile fields. Email updates must use the email change flow.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Doctor profile id or user id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminDoctorUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Doctor updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Delete doctor",
+        "description": "Deletes the doctor user and profile.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Doctor profile id or user id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Doctor deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/hospitals/{id}": {
+      "patch": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Update hospital profile",
+        "description": "Updates hospital profile fields. Email updates must use the email change flow.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Hospital profile id or user id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminHospitalUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hospital updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Delete hospital",
+        "description": "Deletes the hospital user and profile.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Hospital profile id or user id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hospital deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/email-change": {
+      "post": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Request user email change (OTP)",
+        "description": "Sends an OTP for verifying a user email change.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/email-change/verify": {
+      "post": {
+        "tags": [
+          "Admin Module"
+        ],
+        "summary": "Verify user email change (OTP)",
+        "description": "Verifies the OTP and updates the user email.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeVerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           },
           "422": {
             "$ref": "#/components/responses/ValidationFailed"

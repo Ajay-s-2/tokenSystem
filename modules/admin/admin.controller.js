@@ -37,6 +37,24 @@ const updateHospitalStatus = async (req, res) => {
   }
 };
 
+const updateDoctorProfile = async (req, res) => {
+  try {
+    const doctor = await adminService.updateDoctorProfile(req.params.id, req.body);
+    return sendSuccess(res, "Doctor updated successfully", doctor);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const updateHospitalProfile = async (req, res) => {
+  try {
+    const hospital = await adminService.updateHospitalProfile(req.params.id, req.body);
+    return sendSuccess(res, "Hospital updated successfully", hospital);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 const setDefaultSubscription = async (req, res) => {
   try {
     const subscription = await adminService.setDefaultSubscription(req.body.amount);
@@ -124,11 +142,49 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const deleteDoctor = async (req, res) => {
+  try {
+    const user = await adminService.deleteDoctor(req.params.id);
+    return sendSuccess(res, "Doctor deleted", { id: user._id });
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const deleteHospital = async (req, res) => {
+  try {
+    const user = await adminService.deleteHospital(req.params.id);
+    return sendSuccess(res, "Hospital deleted", { id: user._id });
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const requestUserEmailChange = async (req, res) => {
+  try {
+    const data = await adminService.requestUserEmailChange(req.params.id, req.body.email);
+    return sendSuccess(res, data.message);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const verifyUserEmailChange = async (req, res) => {
+  try {
+    const data = await adminService.verifyUserEmailChange(req.params.id, req.body.otp);
+    return sendSuccess(res, "Email updated successfully", data);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 module.exports = {
   getDoctors,
   getHospitals,
   updateDoctorStatus,
   updateHospitalStatus,
+  updateDoctorProfile,
+  updateHospitalProfile,
   setDefaultSubscription,
   getDefaultSubscription,
   setHospitalSubscription,
@@ -138,4 +194,8 @@ module.exports = {
   rejectUser,
   onboardUser,
   deleteUser,
+  deleteDoctor,
+  deleteHospital,
+  requestUserEmailChange,
+  verifyUserEmailChange,
 };

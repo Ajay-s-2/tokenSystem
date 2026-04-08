@@ -67,6 +67,65 @@ const statusUpdateValidation = [
     .withMessage("Status must be pending, approved or rejected"),
 ];
 
+const entityIdValidation = [
+  param("id").isMongoId().withMessage("Valid resource id is required"),
+];
+
+const disallowEmailUpdate = body("email").optional().custom(() => {
+  throw new Error("Use the email change endpoint to update email");
+});
+
+const updateDoctorValidation = [
+  ...entityIdValidation,
+  disallowEmailUpdate,
+  body("name").optional().trim().notEmpty().withMessage("Name cannot be empty"),
+  body("gender").optional().trim().notEmpty().withMessage("Gender cannot be empty"),
+  body("dob").optional().isISO8601().withMessage("Valid date of birth is required"),
+  body("blood_group").optional().trim().notEmpty().withMessage("Blood group cannot be empty"),
+  body("bloodGroup").optional().trim().notEmpty().withMessage("Blood group cannot be empty"),
+  body("phone").optional().trim().notEmpty().withMessage("Phone cannot be empty"),
+  body("department").optional().trim().notEmpty().withMessage("Department cannot be empty"),
+  body("specialization")
+    .optional()
+    .trim()
+    .isString()
+    .withMessage("Specialization must be a string"),
+  body("medicalRegistrationId")
+    .optional()
+    .trim()
+    .isString()
+    .withMessage("Medical registration ID must be a string"),
+];
+
+const updateHospitalValidation = [
+  ...entityIdValidation,
+  disallowEmailUpdate,
+  body("name").optional().trim().notEmpty().withMessage("Name cannot be empty"),
+  body("location").optional().trim().notEmpty().withMessage("Location cannot be empty"),
+  body("phone").optional().trim().notEmpty().withMessage("Phone cannot be empty"),
+  body("departments")
+    .optional()
+    .isArray({ min: 1 })
+    .withMessage("Departments must be a non-empty array"),
+  body("departments.*")
+    .optional()
+    .isString()
+    .withMessage("Department name must be a string"),
+];
+
+const emailChangeRequestValidation = [
+  ...entityIdValidation,
+  body("email").trim().isEmail().withMessage("Valid email is required"),
+];
+
+const emailChangeVerifyValidation = [
+  ...entityIdValidation,
+  body("otp")
+    .trim()
+    .matches(/^\d{6}$/)
+    .withMessage("OTP must be a 6-digit code"),
+];
+
 const defaultSubscriptionValidation = [
   amountValidator,
 ];
@@ -82,8 +141,13 @@ const doctorSubscriptionUpdateValidation = [
 ];
 
 module.exports = {
+  entityIdValidation,
   listValidation,
   statusUpdateValidation,
+  updateDoctorValidation,
+  updateHospitalValidation,
+  emailChangeRequestValidation,
+  emailChangeVerifyValidation,
   defaultSubscriptionValidation,
   hospitalSubscriptionValidation,
   doctorSubscriptionUpdateValidation,

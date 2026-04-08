@@ -6,6 +6,7 @@ const DoctorSubscription = require("../doctor-subscription/doctor-subscription.m
 const userRepository = require("../user/user.repository");
 const { LOGIN_STATUS, ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
+const otpService = require("../../shared/services/otp.service");
 const {
   getLoginStatusFromApprovalStatus,
   getApprovalStatusFromLoginStatus,
@@ -42,6 +43,14 @@ const mapAdminEntity = (user, profile = null) => ({
   createdAt: profile?.createdAt || user.createdAt,
   updatedAt: profile?.updatedAt || user.updatedAt,
 });
+
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const sanitizeString = (value) => {
+  if (value === null || value === undefined) return undefined;
+  const trimmed = String(value).trim();
+  return trimmed === "" ? undefined : trimmed;
+};
 
 const listEntitiesByRole = async ({ role, profileModel, query }) => {
   const filters = { role };
@@ -115,6 +124,129 @@ const updateEntityStatus = async ({ id, status, role, profileModel }) => {
   return mapAdminEntity(user.toObject(), profile ? profile.toObject() : null);
 };
 
+const updateDoctorProfile = async (id, payload) => {
+  const { user, profile } = await resolveEntityAndProfile({
+    id,
+    role: ROLES.DOCTOR,
+    profileModel: Doctor,
+  });
+
+  if (!profile) {
+    throw createHttpError(404, "Doctor profile not found");
+  }
+
+  const updates = {};
+  const userUpdates = {};
+
+  const name = sanitizeString(payload.name);
+  if (name) {
+    updates.name = name;
+    userUpdates.name = name;
+  }
+
+  const gender = sanitizeString(payload.gender);
+  if (gender) {
+    updates.gender = gender;
+    userUpdates.gender = gender;
+  }
+
+  if (payload.dob) {
+    updates.dob = payload.dob;
+  }
+
+  const bloodGroup = sanitizeString(payload.blood_group || payload.bloodGroup);
+  if (bloodGroup) {
+    updates.bloodGroup = bloodGroup;
+  }
+
+  const phone = sanitizeString(payload.phone);
+  if (phone) {
+    updates.phone = phone;
+  }
+
+  const department = sanitizeString(payload.department);
+  if (department) {
+    updates.department = department;
+    userUpdates.departmentName = department;
+  }
+
+  if (payload.specialization !== undefined) {
+    const specialization = sanitizeString(payload.specialization);
+    updates.specialization = specialization || null;
+    userUpdates.specialization = specialization || null;
+  }
+
+  if (payload.medicalRegistrationId !== undefined) {
+    const registrationId = sanitizeString(payload.medicalRegistrationId);
+    updates.medicalRegistrationId = registrationId || null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw createHttpError(400, "No valid fields provided to update");
+  }
+
+  await Doctor.updateOne({ _id: profile._id }, { $set: updates });
+  if (Object.keys(userUpdates).length > 0) {
+    await User.updateOne({ _id: user._id }, { $set: userUpdates });
+  }
+
+  const refreshedUser = await User.findById(user._id).lean();
+  const refreshedProfile = await Doctor.findById(profile._id).lean();
+
+  return mapAdminEntity(refreshedUser, refreshedProfile);
+};
+
+const updateHospitalProfile = async (id, payload) => {
+  const { user, profile } = await resolveEntityAndProfile({
+    id,
+    role: ROLES.HOSPITAL,
+    profileModel: Hospital,
+  });
+
+  if (!profile) {
+    throw createHttpError(404, "Hospital profile not found");
+  }
+
+  const updates = {};
+  const userUpdates = {};
+
+  const name = sanitizeString(payload.name);
+  if (name) {
+    updates.name = name;
+    userUpdates.name = name;
+  }
+
+  const location = sanitizeString(payload.location);
+  if (location) {
+    updates.location = location;
+  }
+
+  const phone = sanitizeString(payload.phone);
+  if (phone) {
+    updates.phone = phone;
+  }
+
+  if (payload.departments !== undefined) {
+    updates.departments = Array.isArray(payload.departments)
+      ? payload.departments.filter((dept) => sanitizeString(dept)).map((dept) => dept.trim())
+      : [];
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw createHttpError(400, "No valid fields provided to update");
+  }
+
+  await Hospital.updateOne({ _id: profile._id }, { $set: updates });
+  if (Object.keys(userUpdates).length > 0) {
+    await User.updateOne({ _id: user._id }, { $set: userUpdates });
+  }
+
+  const refreshedUser = await User.findById(user._id).lean();
+  const refreshedProfile = await Hospital.findById(profile._id).lean();
+
+  return mapAdminEntity(refreshedUser, refreshedProfile);
+};
+
 const approveUser = async (userId) => {
   const user = await userRepository.updateById(userId, {
     loginStatus: LOGIN_STATUS.APPROVED,
@@ -168,6 +300,109 @@ const deleteUser = async (userId) => {
   ]);
 
   return user;
+};
+
+const deleteDoctor = async (id) => {
+  const { user } = await resolveEntityAndProfile({
+    id,
+    role: ROLES.DOCTOR,
+    profileModel: Doctor,
+  });
+
+  return deleteUser(user._id);
+};
+
+const deleteHospital = async (id) => {
+  const { user } = await resolveEntityAndProfile({
+    id,
+    role: ROLES.HOSPITAL,
+    profileModel: Hospital,
+  });
+
+  return deleteUser(user._id);
+};
+
+const requestUserEmailChange = async (userId, newEmail) => {
+  const normalizedEmail = normalizeEmail(newEmail);
+  if (!normalizedEmail) {
+    throw createHttpError(400, "Email is required");
+  }
+
+  const user = await userRepository.findById(userId);
+  if (!user) {
+    throw createHttpError(404, "User not found");
+  }
+
+  if (normalizeEmail(user.email) === normalizedEmail) {
+    throw createHttpError(400, "New email must be different from the current email");
+  }
+
+  const existingUser = await userRepository.findByEmail(normalizedEmail);
+  if (existingUser && String(existingUser._id) !== String(user._id)) {
+    throw createHttpError(409, "Email already in use");
+  }
+
+  const { token, secret, expiresAt } = otpService.generateOtp();
+
+  await userRepository.updateById(user._id, {
+    pendingEmail: normalizedEmail,
+    emailChangeOtpSecret: secret,
+    emailChangeOtpExpiresAt: expiresAt,
+  });
+
+  console.log("Email Change OTP:", token);
+
+  return { message: "OTP sent. Please verify to update the email." };
+};
+
+const verifyUserEmailChange = async (userId, otp) => {
+  if (!otp) {
+    throw createHttpError(400, "OTP is required");
+  }
+
+  const user = await userRepository.findById(userId);
+  if (!user) {
+    throw createHttpError(404, "User not found");
+  }
+
+  if (!user.pendingEmail) {
+    throw createHttpError(400, "No pending email change request found");
+  }
+
+  const { valid, reason } = otpService.verifyOtp(
+    otp,
+    user.emailChangeOtpSecret,
+    user.emailChangeOtpExpiresAt
+  );
+  if (!valid) {
+    throw createHttpError(400, reason || "Invalid OTP");
+  }
+
+  const existingUser = await userRepository.findByEmail(user.pendingEmail);
+  if (existingUser && String(existingUser._id) !== String(user._id)) {
+    throw createHttpError(409, "Email already in use");
+  }
+
+  const updatedUser = await userRepository.updateById(user._id, {
+    email: user.pendingEmail,
+    pendingEmail: null,
+    emailChangeOtpSecret: null,
+    emailChangeOtpExpiresAt: null,
+    isEmailVerified: true,
+  });
+
+  if (updatedUser?.role === ROLES.DOCTOR) {
+    await Doctor.updateOne({ userId: updatedUser._id }, { $set: { email: updatedUser.email } });
+  }
+
+  if (updatedUser?.role === ROLES.HOSPITAL) {
+    await Hospital.updateOne({ userId: updatedUser._id }, { $set: { email: updatedUser.email } });
+  }
+
+  return {
+    id: updatedUser._id,
+    email: updatedUser.email,
+  };
 };
 
 const getDoctors = async (query) =>
@@ -263,8 +498,14 @@ module.exports = {
   rejectUser,
   onboardUser,
   deleteUser,
+  deleteDoctor,
+  deleteHospital,
   getDoctors,
   getHospitals,
+  updateDoctorProfile,
+  updateHospitalProfile,
+  requestUserEmailChange,
+  verifyUserEmailChange,
   updateDoctorStatus,
   updateHospitalStatus,
   setDefaultSubscription,

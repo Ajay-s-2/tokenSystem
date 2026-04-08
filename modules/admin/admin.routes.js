@@ -35,6 +35,30 @@ router.patch(
   validationMiddleware,
   adminController.updateHospitalStatus
 );
+router.patch(
+  "/doctors/:id",
+  adminValidation.updateDoctorValidation,
+  validationMiddleware,
+  adminController.updateDoctorProfile
+);
+router.delete(
+  "/doctors/:id",
+  adminValidation.entityIdValidation,
+  validationMiddleware,
+  adminController.deleteDoctor
+);
+router.patch(
+  "/hospitals/:id",
+  adminValidation.updateHospitalValidation,
+  validationMiddleware,
+  adminController.updateHospitalProfile
+);
+router.delete(
+  "/hospitals/:id",
+  adminValidation.entityIdValidation,
+  validationMiddleware,
+  adminController.deleteHospital
+);
 router.post(
   "/subscription/default",
   adminValidation.defaultSubscriptionValidation,
@@ -60,6 +84,18 @@ router.patch(
 router.patch("/users/:id/approve", adminController.approveUser);
 router.patch("/users/:id/reject", adminController.rejectUser);
 router.patch("/users/:id/onboard", adminController.onboardUser);
+router.post(
+  "/users/:id/email-change",
+  adminValidation.emailChangeRequestValidation,
+  validationMiddleware,
+  adminController.requestUserEmailChange
+);
+router.post(
+  "/users/:id/email-change/verify",
+  adminValidation.emailChangeVerifyValidation,
+  validationMiddleware,
+  adminController.verifyUserEmailChange
+);
 router.delete("/users/:id", adminController.deleteUser);
 
 module.exports = router;

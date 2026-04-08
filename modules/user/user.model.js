@@ -29,6 +29,9 @@ const UserSchema = new mongoose.Schema(
     isEmailVerified: { type: Boolean, default: false },
     otpSecret: { type: String, default: null },
     otpExpiresAt: { type: Date, default: null },
+    pendingEmail: { type: String, default: null, lowercase: true, trim: true },
+    emailChangeOtpSecret: { type: String, default: null },
+    emailChangeOtpExpiresAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
