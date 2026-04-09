@@ -37,6 +37,10 @@
       "description": "Frontend and backend log persistence APIs."
     },
     {
+      "name": "Chat Module",
+      "description": "Doctor ↔ hospital chat APIs."
+    },
+    {
       "name": "User Module",
       "description": "Authenticated user profile APIs."
     },
@@ -848,6 +852,189 @@
           "totalPages": {
             "type": "number",
             "example": 3
+          }
+        }
+      },
+      "ChatMessageItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6815e3c1f5b5b8a2b35d1234"
+          },
+          "conversationId": {
+            "type": "string",
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          },
+          "sender": {
+            "type": "string",
+            "enum": [
+              "doctor",
+              "hospital"
+            ],
+            "example": "doctor"
+          },
+          "message": {
+            "type": "string",
+            "example": "Patient is ready"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "quick",
+              "manual"
+            ],
+            "example": "quick"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": false
+          },
+          "editedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          }
+        }
+      },
+      "ChatMessageListResponseData": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageItem"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "ChatMessageCreateRequest": {
+        "type": "object",
+        "required": [
+          "doctorId",
+          "hospitalId",
+          "message",
+          "type"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "message": {
+            "type": "string",
+            "example": "Patient is ready"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "quick",
+              "manual"
+            ],
+            "example": "quick"
+          },
+          "conversationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          }
+        }
+      },
+      "ChatMessageUpdateRequest": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Updated message text"
+          }
+        }
+      },
+      "ChatConversationReadRequest": {
+        "type": "object",
+        "required": [
+          "doctorId",
+          "hospitalId"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "conversationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          }
+        }
+      },
+      "ChatConversationClearRequest": {
+        "type": "object",
+        "required": [
+          "doctorId",
+          "hospitalId"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "conversationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          }
+        }
+      },
+      "ChatConversationReadResponseData": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "number",
+            "example": 3
+          }
+        }
+      },
+      "ChatConversationClearResponseData": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "number",
+            "example": 12
           }
         }
       },
@@ -5386,6 +5573,430 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/chat/messages": {
+      "get": {
+        "tags": [
+          "Chat Module"
+        ],
+        "summary": "List chat messages",
+        "description": "Fetches chat messages between an approved doctor and hospital connection.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doctorId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hospitalId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "conversationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "read",
+                "unread"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Examples: createdAt, -createdAt"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Messages fetched successfully",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "6815e3c1f5b5b8a2b35d1234",
+                        "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+                        "sender": "doctor",
+                        "message": "Patient is ready",
+                        "type": "quick",
+                        "createdAt": "2026-04-09T12:10:00.000Z",
+                        "isRead": false
+                      }
+                    ],
+                    "pagination": {
+                      "page": 1,
+                      "limit": 10,
+                      "total": 1,
+                      "totalPages": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Chat Module"
+        ],
+        "summary": "Send a chat message",
+        "description": "Sends a quick or manual chat message for an approved doctor-hospital connection.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Message sent successfully",
+                  "data": {
+                    "id": "6815e3c1f5b5b8a2b35d1234",
+                    "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+                    "sender": "doctor",
+                    "message": "Patient is ready",
+                    "type": "quick",
+                    "createdAt": "2026-04-09T12:10:00.000Z",
+                    "isRead": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/chat/messages/{id}": {
+      "patch": {
+        "tags": [
+          "Chat Module"
+        ],
+        "summary": "Update chat message",
+        "description": "Updates a chat message. Only the original sender can edit.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Message updated successfully",
+                  "data": {
+                    "id": "6815e3c1f5b5b8a2b35d1234",
+                    "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+                    "sender": "doctor",
+                    "message": "Updated message text",
+                    "type": "manual",
+                    "createdAt": "2026-04-09T12:10:00.000Z",
+                    "isRead": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chat Module"
+        ],
+        "summary": "Delete chat message",
+        "description": "Deletes a chat message for the doctor-hospital conversation.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Message deleted successfully",
+                  "data": {
+                    "id": "6815e3c1f5b5b8a2b35d1234"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/chat/conversations/read": {
+      "patch": {
+        "tags": [
+          "Chat Module"
+        ],
+        "summary": "Mark conversation as read",
+        "description": "Marks messages sent by the other participant as read.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatConversationReadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation marked as read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Conversation marked as read",
+                  "data": {
+                    "updated": 3
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
+          }
+        }
+      }
+    },
+    "/chat/conversations": {
+      "delete": {
+        "tags": [
+          "Chat Module"
+        ],
+        "summary": "Clear conversation",
+        "description": "Deletes all messages for the conversation between the doctor and hospital.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatConversationClearRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation cleared successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Conversation cleared successfully",
+                  "data": {
+                    "deleted": 12
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationFailed"
           }
         }
       }
