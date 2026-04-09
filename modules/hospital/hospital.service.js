@@ -164,7 +164,9 @@ const ensureDoctorApprovedForHospital = async ({ hospitalId, doctorId }) => {
     throw createHttpError(400, "Invalid doctor id");
   }
 
-  const doctor = await Doctor.findById(doctorId).lean();
+  const doctor = await Doctor.findOne({
+    $or: [{ _id: doctorId }, { userId: doctorId }],
+  }).lean();
   if (!doctor) {
     throw createHttpError(404, "Doctor not found");
   }
@@ -342,10 +344,14 @@ const deleteDepartmentAssignment = async ({
   requesterRole,
 }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
+  const doctor = await ensureDoctorApprovedForHospital({
+    hospitalId: hospital._id,
+    doctorId,
+  });
 
   const assignment = await HospitalDoctorDepartmentAssignment.findOneAndDelete({
     hospitalId: hospital._id,
-    doctorId,
+    doctorId: doctor._id,
   }).lean();
 
   if (!assignment) {
