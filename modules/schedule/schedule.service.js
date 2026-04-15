@@ -4,6 +4,7 @@ const PatientToken = require("./patient-token.model");
 const Doctor = require("../doctor/doctor.model");
 const Hospital = require("../hospital/hospital.model");
 const Department = require("../department/department.model");
+const HospitalDoctorDepartmentAssignment = require("../hospital/hospital-doctor-department-assignment.model");
 const { ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
 const {
@@ -115,6 +116,21 @@ const getApprovedDoctorForHospital = async ({ hospitalId, doctorId }) => {
   return doctor;
 };
 
+const getDoctorDepartmentAssignmentForHospital = async ({ hospitalId, doctorId }) => {
+  if (!mongoose.isValidObjectId(doctorId)) {
+    throw createHttpError(400, "Invalid doctor id");
+  }
+  
+  const assignment = await HospitalDoctorDepartmentAssignment.findOne({
+    hospitalId,
+    doctorId,
+  })
+    .populate("departmentId", "departmentName")
+    .lean();
+
+  return assignment;
+};
+
 const getScheduleForHospital = async ({ scheduleId, hospitalId }) => {
   if (!mongoose.isValidObjectId(scheduleId)) {
     throw createHttpError(400, "Invalid schedule id");
@@ -187,12 +203,24 @@ const ensureValidScheduleDate = (date) => {
 const getBootstrapData = async (authUser) => {
   const hospital = await getHospitalForRequester(authUser);
 
-  const [approvedDoctors, departments] = await Promise.all([
+  const [approvedDoctors, departments, departmentAssignments] = await Promise.all([
     Doctor.find({ approvedHospitals: hospital._id })
       .sort({ name: 1 })
       .lean(),
     Department.find({}, { departmentName: 1 }).sort({ departmentName: 1 }).lean(),
+    HospitalDoctorDepartmentAssignment.find({ hospitalId: hospital._id })
+      .populate("doctorId", "name")
+      .populate("departmentId", "departmentName")
+      .lean(),
   ]);
+
+  // Create a map of doctor assignments
+  const doctorAssignmentMap = new Map(
+    departmentAssignments.map((assignment) => [
+      String(assignment.doctorId._id || assignment.doctorId),
+      assignment.departmentId?.departmentName || "",
+    ])
+  );
 
   const departmentSet = new Set([
     ...(hospital.departments || []),
@@ -215,11 +243,17 @@ const getBootstrapData = async (authUser) => {
       name: doctor.name,
       email: doctor.email,
       phone: doctor.phone,
-      department: doctor.department,
+      department: doctorAssignmentMap.get(String(doctor._id)) || doctor.department,
+      assignedDepartment: doctorAssignmentMap.get(String(doctor._id)) || null,
       status: doctor.status,
       isApproved: true,
     })),
     consultationTimeOptions: CONSULTATION_TIME_OPTIONS,
+    doctorAssignments: departmentAssignments.map((assignment) => ({
+      doctorId: String(assignment.doctorId._id || assignment.doctorId),
+      doctorName: assignment.doctorId?.name || "",
+      department: assignment.departmentId?.departmentName || "",
+    })),
   };
 };
 
@@ -320,8 +354,25 @@ const createSchedule = async (payload, authUser) => {
   const endTime = String(payload.endTime || "").trim();
   const consultationTime = Number(payload.consultationTime);
 
-  if (doctor.department !== department) {
-    throw createHttpError(400, "Selected doctor does not belong to this department");
+  // Check if doctor is assigned to this department in this hospital
+  const departmentAssignment = await getDoctorDepartmentAssignmentForHospital({
+    hospitalId: hospital._id,
+    doctorId: doctor._id,
+  });
+
+  if (!departmentAssignment) {
+    throw createHttpError(
+      400,
+      "Doctor is not assigned to any department. Please assign the doctor to a department first."
+    );
+  }
+
+  const assignedDepartmentName = departmentAssignment.departmentId?.departmentName;
+  if (assignedDepartmentName !== department) {
+    throw createHttpError(
+      400,
+      `Doctor is not assigned to this department. Doctor is assigned to: ${assignedDepartmentName}`
+    );
   }
 
   const slots = generateTimeSlots(startTime, endTime, consultationTime);
@@ -394,8 +445,25 @@ const updateSchedule = async (scheduleId, payload, authUser) => {
   const endTime = String(payload.endTime || "").trim();
   const consultationTime = Number(payload.consultationTime);
 
-  if (doctor.department !== department) {
-    throw createHttpError(400, "Selected doctor does not belong to this department");
+  // Check if doctor is assigned to this department in this hospital
+  const departmentAssignment = await getDoctorDepartmentAssignmentForHospital({
+    hospitalId: hospital._id,
+    doctorId: doctor._id,
+  });
+
+  if (!departmentAssignment) {
+    throw createHttpError(
+      400,
+      "Doctor is not assigned to any department. Please assign the doctor to a department first."
+    );
+  }
+
+  const assignedDepartmentName = departmentAssignment.departmentId?.departmentName;
+  if (assignedDepartmentName !== department) {
+    throw createHttpError(
+      400,
+      `Doctor is not assigned to this department. Doctor is assigned to: ${assignedDepartmentName}`
+    );
   }
 
   const slots = generateTimeSlots(startTime, endTime, consultationTime);
