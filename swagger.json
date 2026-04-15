@@ -38,7 +38,7 @@
     },
     {
       "name": "Chat Module",
-      "description": "Doctor ↔ hospital chat APIs."
+      "description": "Doctor <-> hospital chat APIs and realtime Socket.IO integration guide.\n\nREST endpoints below are kept for compatibility and history fetches. Realtime chat should use Socket.IO.\n\nSocket.IO connection:\n```json\n{\n  \"serverUrl\": \"http://localhost:4000\",\n  \"auth\": {\n    \"token\": \"<JWT_TOKEN>\"\n  }\n}\n```\n\nFrontend should emit these events:\n```json\n{\n  \"subscribe\": \"chat:subscribe\",\n  \"unsubscribe\": \"chat:unsubscribe\",\n  \"listMessages\": \"chat:messages:list\",\n  \"createMessage\": \"chat:message:create\",\n  \"updateMessage\": \"chat:message:update\",\n  \"deleteMessage\": \"chat:message:delete\",\n  \"markRead\": \"chat:conversation:read\",\n  \"clearConversation\": \"chat:conversation:clear\"\n}\n```\n\nFrontend should listen to these events:\n```json\n{\n  \"connected\": \"chat:connected\",\n  \"error\": \"chat:error\",\n  \"subscribed\": \"chat:subscribed\",\n  \"unsubscribed\": \"chat:unsubscribed\",\n  \"messages\": \"chat:messages\",\n  \"messageCreated\": \"chat:message:created\",\n  \"messageUpdated\": \"chat:message:updated\",\n  \"messageDeleted\": \"chat:message:deleted\",\n  \"conversationReadUpdated\": \"chat:conversation:read:updated\",\n  \"conversationCleared\": \"chat:conversation:cleared\"\n}\n```\n\nSocket ack response format:\n```json\n{\n  \"success\": true,\n  \"data\": {}\n}\n```\n```json\n{\n  \"success\": false,\n  \"error\": {\n    \"message\": \"Doctor not found\",\n    \"statusCode\": 404,\n    \"errors\": null\n  }\n}\n```"
     },
     {
       "name": "User Module",
@@ -857,6 +857,20 @@
       },
       "ChatMessageItem": {
         "type": "object",
+        "required": [
+          "id",
+          "conversationId",
+          "sender",
+          "message",
+          "type",
+          "createdAt",
+          "isRead",
+          "doctorId",
+          "hospitalId",
+          "doctorUserId",
+          "hospitalUserId",
+          "senderUserId"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -888,7 +902,8 @@
           },
           "createdAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "example": "2026-04-09T12:10:00.000Z"
           },
           "isRead": {
             "type": "boolean",
@@ -897,12 +912,14 @@
           "editedAt": {
             "type": "string",
             "format": "date-time",
-            "nullable": true
+            "nullable": true,
+            "example": null
           },
           "readAt": {
             "type": "string",
             "format": "date-time",
-            "nullable": true
+            "nullable": true,
+            "example": null
           },
           "doctorId": {
             "type": "string",
@@ -911,11 +928,27 @@
           "hospitalId": {
             "type": "string",
             "example": "67f0b2a8360d88b6e145df90"
+          },
+          "doctorUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da11"
+          },
+          "hospitalUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da22"
+          },
+          "senderUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da11"
           }
         }
       },
       "ChatMessageListResponseData": {
         "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
         "properties": {
           "items": {
             "type": "array",
@@ -939,11 +972,13 @@
         "properties": {
           "doctorId": {
             "type": "string",
-            "example": "67f0b2a8360d88b6e145df81"
+            "example": "67f0b2a8360d88b6e145df81",
+            "description": "Doctor profile id or doctor user id"
           },
           "hospitalId": {
             "type": "string",
-            "example": "67f0b2a8360d88b6e145df90"
+            "example": "67f0b2a8360d88b6e145df90",
+            "description": "Hospital profile id or hospital user id"
           },
           "message": {
             "type": "string",
@@ -960,7 +995,8 @@
           "conversationId": {
             "type": "string",
             "nullable": true,
-            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+            "description": "Optional. Backend will generate one if omitted."
           }
         }
       },
@@ -1022,19 +1058,90 @@
       },
       "ChatConversationReadResponseData": {
         "type": "object",
+        "required": [
+          "updated",
+          "conversationId",
+          "doctorId",
+          "hospitalId",
+          "doctorUserId",
+          "hospitalUserId",
+          "readerRole",
+          "readAt"
+        ],
         "properties": {
           "updated": {
             "type": "number",
             "example": 3
+          },
+          "conversationId": {
+            "type": "string",
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          },
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "doctorUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da11"
+          },
+          "hospitalUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da22"
+          },
+          "readerRole": {
+            "type": "string",
+            "enum": [
+              "doctor",
+              "hospital"
+            ],
+            "example": "hospital"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-04-09T12:15:00.000Z"
           }
         }
       },
       "ChatConversationClearResponseData": {
         "type": "object",
+        "required": [
+          "deleted",
+          "conversationId",
+          "doctorId",
+          "hospitalId",
+          "doctorUserId",
+          "hospitalUserId"
+        ],
         "properties": {
           "deleted": {
             "type": "number",
             "example": 12
+          },
+          "conversationId": {
+            "type": "string",
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          },
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "doctorUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da11"
+          },
+          "hospitalUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da22"
           }
         }
       },
@@ -1828,6 +1935,112 @@
             "example": "67f0b2a8360d88b6e145df90"
           }
         }
+      },
+      "ChatMessageDeleteResponseData": {
+        "type": "object",
+        "required": [
+          "id",
+          "conversationId",
+          "doctorId",
+          "hospitalId",
+          "doctorUserId",
+          "hospitalUserId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6815e3c1f5b5b8a2b35d1234"
+          },
+          "conversationId": {
+            "type": "string",
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          },
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "doctorUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da11"
+          },
+          "hospitalUserId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145da22"
+          }
+        }
+      },
+      "ChatSocketSubscribeRequest": {
+        "type": "object",
+        "required": [
+          "doctorId",
+          "hospitalId"
+        ],
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df81"
+          },
+          "hospitalId": {
+            "type": "string",
+            "example": "67f0b2a8360d88b6e145df90"
+          },
+          "conversationId": {
+            "type": "string",
+            "nullable": true,
+            "example": "doctor:dr-ananya-rao::hospital:city-care-hospital"
+          },
+          "query": {
+            "type": "object",
+            "nullable": true,
+            "example": {
+              "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+              "page": 1,
+              "limit": 100
+            }
+          }
+        }
+      },
+      "ChatSocketAckSuccess": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "nullable": true
+          }
+        }
+      },
+      "ChatSocketAckError": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "example": "Doctor not found"
+              },
+              "statusCode": {
+                "type": "number",
+                "example": 404
+              },
+              "errors": {
+                "nullable": true,
+                "example": null
+              }
+            }
+          }
+        }
       }
     },
     "responses": {
@@ -2343,14 +2556,14 @@
           "201": {
             "description": "Department created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -2390,14 +2603,14 @@
           "200": {
             "description": "Department updated"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
           }
         }
       },
@@ -2425,14 +2638,14 @@
           "200": {
             "description": "Department deleted"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -5531,14 +5744,14 @@
           "201": {
             "description": "Admin created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
           }
         }
       }
@@ -5583,7 +5796,7 @@
           "Chat Module"
         ],
         "summary": "List chat messages",
-        "description": "Fetches chat messages between an approved doctor and hospital connection.",
+        "description": "Fetches chat messages between an approved doctor and hospital connection.\n\nThis endpoint is useful for initial history loading and fallback sync.\nRealtime updates should be consumed through Socket.IO events from the Chat Module.",
         "security": [
           {
             "bearerAuth": []
@@ -5668,7 +5881,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChatMessageListResponseData"
+                        }
+                      }
+                    }
+                  ]
                 },
                 "example": {
                   "success": true,
@@ -5682,7 +5907,14 @@
                         "message": "Patient is ready",
                         "type": "quick",
                         "createdAt": "2026-04-09T12:10:00.000Z",
-                        "isRead": false
+                        "isRead": false,
+                        "editedAt": null,
+                        "readAt": null,
+                        "doctorId": "67f0b2a8360d88b6e145df81",
+                        "hospitalId": "67f0b2a8360d88b6e145df90",
+                        "doctorUserId": "67f0b2a8360d88b6e145da11",
+                        "hospitalUserId": "67f0b2a8360d88b6e145da22",
+                        "senderUserId": "67f0b2a8360d88b6e145da11"
                       }
                     ],
                     "pagination": {
@@ -5715,7 +5947,7 @@
           "Chat Module"
         ],
         "summary": "Send a chat message",
-        "description": "Sends a quick or manual chat message for an approved doctor-hospital connection.",
+        "description": "Creates a chat message in MongoDB and also broadcasts it to subscribed Socket.IO clients.\n\nUse this route only if the frontend still depends on HTTP. New realtime clients should prefer `chat:message:create`.",
         "security": [
           {
             "bearerAuth": []
@@ -5727,6 +5959,13 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatMessageCreateRequest"
+              },
+              "example": {
+                "doctorId": "67f0b2a8360d88b6e145df81",
+                "hospitalId": "67f0b2a8360d88b6e145df90",
+                "message": "Patient is ready",
+                "type": "quick",
+                "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital"
               }
             }
           }
@@ -5737,7 +5976,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChatMessageItem"
+                        }
+                      }
+                    }
+                  ]
                 },
                 "example": {
                   "success": true,
@@ -5749,7 +6000,14 @@
                     "message": "Patient is ready",
                     "type": "quick",
                     "createdAt": "2026-04-09T12:10:00.000Z",
-                    "isRead": false
+                    "isRead": false,
+                    "editedAt": null,
+                    "readAt": null,
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorUserId": "67f0b2a8360d88b6e145da11",
+                    "hospitalUserId": "67f0b2a8360d88b6e145da22",
+                    "senderUserId": "67f0b2a8360d88b6e145da11"
                   }
                 }
               }
@@ -5776,7 +6034,7 @@
           "Chat Module"
         ],
         "summary": "Update chat message",
-        "description": "Updates a chat message. Only the original sender can edit.",
+        "description": "Updates a chat message. Only the original sender can edit.\n\nWhen successful, the backend also emits `chat:message:updated` to subscribed Socket.IO clients.",
         "security": [
           {
             "bearerAuth": []
@@ -5798,6 +6056,9 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatMessageUpdateRequest"
+              },
+              "example": {
+                "message": "Updated message text"
               }
             }
           }
@@ -5808,7 +6069,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChatMessageItem"
+                        }
+                      }
+                    }
+                  ]
                 },
                 "example": {
                   "success": true,
@@ -5820,7 +6093,14 @@
                     "message": "Updated message text",
                     "type": "manual",
                     "createdAt": "2026-04-09T12:10:00.000Z",
-                    "isRead": false
+                    "isRead": false,
+                    "editedAt": "2026-04-09T12:12:00.000Z",
+                    "readAt": null,
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorUserId": "67f0b2a8360d88b6e145da11",
+                    "hospitalUserId": "67f0b2a8360d88b6e145da22",
+                    "senderUserId": "67f0b2a8360d88b6e145da11"
                   }
                 }
               }
@@ -5845,7 +6125,7 @@
           "Chat Module"
         ],
         "summary": "Delete chat message",
-        "description": "Deletes a chat message for the doctor-hospital conversation.",
+        "description": "Deletes a chat message for the doctor-hospital conversation.\n\nWhen successful, the backend also emits `chat:message:deleted` to subscribed Socket.IO clients.",
         "security": [
           {
             "bearerAuth": []
@@ -5867,13 +6147,30 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChatMessageDeleteResponseData"
+                        }
+                      }
+                    }
+                  ]
                 },
                 "example": {
                   "success": true,
                   "message": "Message deleted successfully",
                   "data": {
-                    "id": "6815e3c1f5b5b8a2b35d1234"
+                    "id": "6815e3c1f5b5b8a2b35d1234",
+                    "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorUserId": "67f0b2a8360d88b6e145da11",
+                    "hospitalUserId": "67f0b2a8360d88b6e145da22"
                   }
                 }
               }
@@ -5897,7 +6194,7 @@
           "Chat Module"
         ],
         "summary": "Mark conversation as read",
-        "description": "Marks messages sent by the other participant as read.",
+        "description": "Marks messages sent by the other participant as read.\n\nWhen successful, the backend also emits `chat:conversation:read:updated` to subscribed Socket.IO clients.",
         "security": [
           {
             "bearerAuth": []
@@ -5909,6 +6206,11 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatConversationReadRequest"
+              },
+              "example": {
+                "doctorId": "67f0b2a8360d88b6e145df81",
+                "hospitalId": "67f0b2a8360d88b6e145df90",
+                "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital"
               }
             }
           }
@@ -5919,13 +6221,32 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChatConversationReadResponseData"
+                        }
+                      }
+                    }
+                  ]
                 },
                 "example": {
                   "success": true,
                   "message": "Conversation marked as read",
                   "data": {
-                    "updated": 3
+                    "updated": 3,
+                    "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorUserId": "67f0b2a8360d88b6e145da11",
+                    "hospitalUserId": "67f0b2a8360d88b6e145da22",
+                    "readerRole": "hospital",
+                    "readAt": "2026-04-09T12:15:00.000Z"
                   }
                 }
               }
@@ -5952,7 +6273,7 @@
           "Chat Module"
         ],
         "summary": "Clear conversation",
-        "description": "Deletes all messages for the conversation between the doctor and hospital.",
+        "description": "Deletes all messages for the conversation between the doctor and hospital.\n\nWhen successful, the backend also emits `chat:conversation:cleared` to subscribed Socket.IO clients.",
         "security": [
           {
             "bearerAuth": []
@@ -5964,6 +6285,11 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatConversationClearRequest"
+              },
+              "example": {
+                "doctorId": "67f0b2a8360d88b6e145df81",
+                "hospitalId": "67f0b2a8360d88b6e145df90",
+                "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital"
               }
             }
           }
@@ -5974,13 +6300,30 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChatConversationClearResponseData"
+                        }
+                      }
+                    }
+                  ]
                 },
                 "example": {
                   "success": true,
                   "message": "Conversation cleared successfully",
                   "data": {
-                    "deleted": 12
+                    "deleted": 12,
+                    "conversationId": "doctor:dr-ananya-rao::hospital:city-care-hospital",
+                    "doctorId": "67f0b2a8360d88b6e145df81",
+                    "hospitalId": "67f0b2a8360d88b6e145df90",
+                    "doctorUserId": "67f0b2a8360d88b6e145da11",
+                    "hospitalUserId": "67f0b2a8360d88b6e145da22"
                   }
                 }
               }

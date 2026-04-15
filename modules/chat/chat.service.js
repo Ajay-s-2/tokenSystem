@@ -123,8 +123,38 @@ const mapChatMessage = (message) => {
     isRead: source.isRead,
     editedAt: source.editedAt,
     readAt: source.readAt,
-    doctorId: source.doctorId,
-    hospitalId: source.hospitalId,
+    doctorId: String(source.doctorId),
+    hospitalId: String(source.hospitalId),
+    doctorUserId: String(source.doctorUserId),
+    hospitalUserId: String(source.hospitalUserId),
+    senderUserId: String(source.senderUserId),
+  };
+};
+
+const getConversationContext = async ({
+  doctorId,
+  hospitalId,
+  conversationId,
+  requesterId,
+  requesterRole,
+}) => {
+  const { doctor, hospital } = await resolveParticipants({ doctorId, hospitalId });
+  const requesterChatRole = ensureRequesterAccess({
+    doctor,
+    hospital,
+    requesterId,
+    requesterRole,
+  });
+
+  return {
+    doctor,
+    hospital,
+    doctorId: String(doctor._id),
+    hospitalId: String(hospital._id),
+    doctorUserId: String(doctor.userId),
+    hospitalUserId: String(hospital.userId),
+    requesterChatRole,
+    conversationId: buildConversationId({ conversationId, doctor, hospital }),
   };
 };
 
@@ -278,7 +308,14 @@ const deleteMessage = async ({ id, requesterId, requesterRole }) => {
 
   await chatMessage.deleteOne();
 
-  return { id: String(chatMessage._id) };
+  return {
+    id: String(chatMessage._id),
+    conversationId: chatMessage.conversationId,
+    doctorId: String(chatMessage.doctorId),
+    hospitalId: String(chatMessage.hospitalId),
+    doctorUserId: String(chatMessage.doctorUserId),
+    hospitalUserId: String(chatMessage.hospitalUserId),
+  };
 };
 
 const markConversationAsRead = async ({
@@ -319,6 +356,14 @@ const markConversationAsRead = async ({
 
   return {
     updated: result.modifiedCount || result.nModified || 0,
+    conversationId:
+      normalizedConversation || buildConversationId({ doctor, hospital }),
+    doctorId: String(doctor._id),
+    hospitalId: String(hospital._id),
+    doctorUserId: String(doctor.userId),
+    hospitalUserId: String(hospital.userId),
+    readerRole: viewerRole,
+    readAt: update.$set.readAt,
   };
 };
 
@@ -346,6 +391,12 @@ const clearConversation = async ({
 
   return {
     deleted: result.deletedCount || 0,
+    conversationId:
+      normalizedConversation || buildConversationId({ doctor, hospital }),
+    doctorId: String(doctor._id),
+    hospitalId: String(hospital._id),
+    doctorUserId: String(doctor.userId),
+    hospitalUserId: String(hospital.userId),
   };
 };
 
@@ -356,4 +407,5 @@ module.exports = {
   deleteMessage,
   markConversationAsRead,
   clearConversation,
+  getConversationContext,
 };

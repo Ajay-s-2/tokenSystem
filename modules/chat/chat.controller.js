@@ -1,4 +1,5 @@
 const chatService = require("./chat.service");
+const chatRealtime = require("./chat.realtime");
 const { sendSuccess, sendError } = require("../../shared/utils/response.util");
 
 const createMessage = async (req, res) => {
@@ -13,6 +14,7 @@ const createMessage = async (req, res) => {
       requesterRole: req.user?.role,
     });
 
+    chatRealtime.emitMessageCreated(message);
     return sendSuccess(res, "Message sent successfully", message, 201);
   } catch (error) {
     return sendError(
@@ -54,6 +56,7 @@ const updateMessage = async (req, res) => {
       requesterRole: req.user?.role,
     });
 
+    chatRealtime.emitMessageUpdated(message);
     return sendSuccess(res, "Message updated successfully", message);
   } catch (error) {
     return sendError(
@@ -73,6 +76,7 @@ const deleteMessage = async (req, res) => {
       requesterRole: req.user?.role,
     });
 
+    chatRealtime.emitMessageDeleted(data);
     return sendSuccess(res, "Message deleted successfully", data);
   } catch (error) {
     return sendError(
@@ -94,6 +98,7 @@ const markConversationAsRead = async (req, res) => {
       requesterRole: req.user?.role,
     });
 
+    chatRealtime.emitConversationRead(data);
     return sendSuccess(res, "Conversation marked as read", data);
   } catch (error) {
     return sendError(
@@ -115,6 +120,7 @@ const clearConversation = async (req, res) => {
       requesterRole: req.user?.role,
     });
 
+    chatRealtime.emitConversationCleared(data);
     return sendSuccess(res, "Conversation cleared successfully", data);
   } catch (error) {
     return sendError(
