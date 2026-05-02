@@ -2,7 +2,7 @@ const departmentService = require("../department/department.service");
 const doctorService = require("../doctor/doctor.service");
 const hospitalService = require("../hospital/hospital.service");
 const userRepository = require("./user.repository");
-const { ROLES } = require("../../shared/utils/constants");
+const { APPROVAL_STATUS, LOGIN_STATUS, ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.util");
 const { createHttpError } = require("../../shared/utils/error.util");
 
@@ -31,6 +31,25 @@ const updateMyDepartment = async (userId, departmentId) => {
 module.exports = {
   updateMyDepartment,
   getMe: async (userId) => {
+    if (userId === "super_admin") {
+      return {
+        user: {
+          id: "super_admin",
+          name: "Super Admin",
+          email: process.env.SUPER_ADMIN_EMAIL || "",
+          role: ROLES.ADMIN,
+          actualRole: ROLES.SUPER_ADMIN,
+          loginStatus: LOGIN_STATUS.APPROVED,
+          approvalStatus: APPROVAL_STATUS.APPROVED,
+          onboardingStatus: ONBOARDING_STATUS.ONBOARDED,
+          isEmailVerified: true,
+          departmentId: null,
+          departmentName: null,
+        },
+        profile: null,
+      };
+    }
+
     const user = await userRepository.findById(userId);
     if (!user) {
       throw createHttpError(404, "User not found");
