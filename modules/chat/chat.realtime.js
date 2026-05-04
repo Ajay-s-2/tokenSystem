@@ -156,12 +156,9 @@ const authenticateSocket = (socket, next) => {
   }
 };
 
-const initializeChatRealtime = (server, corsOrigins) => {
+const initializeChatRealtime = (server, corsOptions) => {
   io = new Server(server, {
-    cors: {
-      origin: corsOrigins,
-      credentials: true,
-    },
+    cors: corsOptions,
   });
 
   io.use(authenticateSocket);

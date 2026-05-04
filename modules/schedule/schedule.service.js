@@ -695,6 +695,72 @@ const updateTokenStatus = async (tokenId, statusValue, authUser) => {
   return mapToken(token);
 };
 
+const updateToken = async (tokenId, payload, authUser) => {
+  const hospital = await getHospitalForRequester(authUser);
+
+  if (!mongoose.isValidObjectId(tokenId)) {
+    throw createHttpError(400, "Invalid token id");
+  }
+
+  const token = await PatientToken.findOne({
+    _id: tokenId,
+    hospitalId: hospital._id,
+  });
+
+  if (!token) {
+    throw createHttpError(404, "Patient token not found");
+  }
+
+  token.patientName = String(payload.patientName || "").trim();
+  token.dob = String(payload.dob || "").trim();
+  token.bloodGroup = String(payload.bloodGroup || "").trim();
+  token.aadhaar = String(payload.aadhaar || "").trim();
+  token.contact = String(payload.contact || "").trim();
+
+  await token.save();
+
+  return mapToken(token);
+};
+
+const deleteToken = async (tokenId, authUser) => {
+  const hospital = await getHospitalForRequester(authUser);
+
+  if (!mongoose.isValidObjectId(tokenId)) {
+    throw createHttpError(400, "Invalid token id");
+  }
+
+  const token = await PatientToken.findOne({
+    _id: tokenId,
+    hospitalId: hospital._id,
+  });
+
+  if (!token) {
+    throw createHttpError(404, "Patient token not found");
+  }
+
+  await DoctorSchedule.updateOne(
+    {
+      _id: token.scheduleId,
+      hospitalId: hospital._id,
+    },
+    {
+      $set: {
+        "slots.$[slot].isBooked": false,
+        "slots.$[slot].patientTokenId": null,
+      },
+    },
+    {
+      arrayFilters: [{ "slot.patientTokenId": token._id }],
+    }
+  );
+
+  await PatientToken.deleteOne({ _id: token._id });
+
+  return {
+    id: String(token._id),
+  };
+};
+
 module.exports = {
   getBootstrapData,
   listSchedules,
@@ -705,4 +771,6 @@ module.exports = {
   assignToken,
   deleteSchedule,
   updateTokenStatus,
+  updateToken,
+  deleteToken,
 };

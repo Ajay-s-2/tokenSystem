@@ -56,6 +56,20 @@ router.patch(
 );
 
 router.patch(
+  "/tokens/:tokenId",
+  scheduleValidation.updateTokenValidation,
+  validationMiddleware,
+  scheduleController.updateToken
+);
+
+router.delete(
+  "/tokens/:tokenId",
+  scheduleValidation.deleteTokenValidation,
+  validationMiddleware,
+  scheduleController.deleteToken
+);
+
+router.patch(
   "/:scheduleId",
   scheduleValidation.updateScheduleValidation,
   validationMiddleware,

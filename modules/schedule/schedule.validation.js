@@ -107,6 +107,19 @@ const assignTokenValidation = [
 ];
 
 const updateTokenStatusValidation = [tokenIdParamValidation, tokenStatusValidator];
+const updateTokenValidation = [
+  tokenIdParamValidation,
+  body("patientName").trim().notEmpty().withMessage("Patient name is required"),
+  body("dob").isISO8601({ strict: true }).withMessage("Valid date of birth is required"),
+  body("bloodGroup").trim().notEmpty().withMessage("Blood group is required"),
+  body("aadhaar")
+    .optional()
+    .trim()
+    .custom((value) => value === "" || /^\d{12}$/.test(value))
+    .withMessage("Aadhaar must be 12 digits"),
+  body("contact").custom(contactValidator).withMessage("Enter a valid 10-digit phone number or email"),
+];
+const deleteTokenValidation = [tokenIdParamValidation];
 
 module.exports = {
   listSchedulesValidation,
@@ -117,4 +130,6 @@ module.exports = {
   deleteScheduleValidation,
   assignTokenValidation,
   updateTokenStatusValidation,
+  updateTokenValidation,
+  deleteTokenValidation,
 };

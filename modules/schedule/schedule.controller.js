@@ -86,6 +86,24 @@ const updateTokenStatus = async (req, res) => {
   }
 };
 
+const updateToken = async (req, res) => {
+  try {
+    const token = await scheduleService.updateToken(req.params.tokenId, req.body, req.user);
+    return sendSuccess(res, "Patient token updated successfully", token);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
+const deleteToken = async (req, res) => {
+  try {
+    const result = await scheduleService.deleteToken(req.params.tokenId, req.user);
+    return sendSuccess(res, "Patient token deleted successfully", result);
+  } catch (error) {
+    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
+  }
+};
+
 module.exports = {
   getBootstrapData,
   listSchedules,
@@ -96,4 +114,6 @@ module.exports = {
   listTokens,
   assignToken,
   updateTokenStatus,
+  updateToken,
+  deleteToken,
 };

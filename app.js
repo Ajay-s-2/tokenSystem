@@ -5,6 +5,7 @@ const routes = require("./routes");
 const errorMiddleware = require("./middleware/error.middleware");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger.json");
+const { getCorsOrigins, createCorsOriginChecker } = require("./config/cors");
 
 const app = express();
 
@@ -12,10 +13,13 @@ const app = express();
 app.use(express.json());
 
 // Enable CORS for API clients
-const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
-  : "*";
-app.use(cors({ origin: corsOrigins }));
+const corsOrigins = getCorsOrigins();
+app.use(
+  cors({
+    origin: createCorsOriginChecker(corsOrigins),
+    credentials: true,
+  })
+);
 
 
 

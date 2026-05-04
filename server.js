@@ -2,6 +2,7 @@ require("dotenv").config();
 const http = require("http");
 const app = require("./app");
 const connectDB = require("./config/db");
+const { getCorsOrigins, createCorsOriginChecker } = require("./config/cors");
 const { ensureSuperAdmin, ensureDefaultDepartments } = require("./modules/superadmin/superadmin.service");
 const { initializeChatRealtime } = require("./modules/chat/chat.realtime");
 
@@ -17,11 +18,12 @@ const startServer = async () => {
     // Ensure default departments are seeded
     await ensureDefaultDepartments();
 
-    const corsOrigins = process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
-      : "*";
+    const corsOrigins = getCorsOrigins();
     const server = http.createServer(app);
-    initializeChatRealtime(server, corsOrigins);
+    initializeChatRealtime(server, {
+      origin: createCorsOriginChecker(corsOrigins),
+      credentials: true,
+    });
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
