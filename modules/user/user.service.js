@@ -30,7 +30,7 @@ const updateMyDepartment = async (userId, departmentId) => {
 
 module.exports = {
   updateMyDepartment,
-  getMe: async (userId) => {
+  getMe: async (userId, language = "en") => {
     if (userId === "super_admin") {
       return {
         user: {
@@ -59,13 +59,13 @@ module.exports = {
 
     if (user.role === ROLES.DOCTOR) {
       try {
-        profile = await doctorService.getDoctorById(user._id);
+        profile = await doctorService.getDoctorById(user._id, language);
       } catch {
         profile = null;
       }
     } else if (user.role === ROLES.HOSPITAL) {
       try {
-        profile = await hospitalService.getHospitalById(user._id);
+        profile = await hospitalService.getHospitalById(user._id, language);
       } catch {
         profile = null;
       }

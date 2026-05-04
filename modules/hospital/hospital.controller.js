@@ -1,5 +1,6 @@
 const hospitalService = require("./hospital.service");
 const { sendSuccess, sendError } = require("../../shared/utils/response.util");
+const { getRequestLanguage } = require("../../shared/utils/localization.util");
 
 const createHospital = async (req, res) => {
   try {
@@ -17,7 +18,7 @@ const createHospital = async (req, res) => {
 
 const getHospitalById = async (req, res) => {
   try {
-    const hospital = await hospitalService.getHospitalById(req.params.id);
+    const hospital = await hospitalService.getHospitalById(req.params.id, getRequestLanguage(req));
     return sendSuccess(res, "Hospital fetched successfully", hospital);
   } catch (error) {
     const statusCode = error.statusCode || 500;
@@ -27,7 +28,7 @@ const getHospitalById = async (req, res) => {
 
 const listHospitals = async (req, res) => {
   try {
-    const data = await hospitalService.listHospitals(req.query);
+    const data = await hospitalService.listHospitals(req.query, getRequestLanguage(req));
     return sendSuccess(res, "Hospitals fetched successfully", data);
   } catch (error) {
     const statusCode = error.statusCode || 500;
@@ -55,6 +56,7 @@ const getPendingDoctors = async (req, res) => {
       hospitalId: req.params.id,
       requesterId: req.user.id,
       requesterRole: req.user.role,
+      language: getRequestLanguage(req),
     });
 
     return sendSuccess(res, "Pending doctors fetched successfully", data);
@@ -74,6 +76,7 @@ const getApprovedDoctors = async (req, res) => {
       hospitalId: req.params.id,
       requesterId: req.user.id,
       requesterRole: req.user.role,
+      language: getRequestLanguage(req),
     });
 
     return sendSuccess(res, "Approved doctors fetched successfully", data);
@@ -93,6 +96,7 @@ const getRejectedDoctors = async (req, res) => {
       hospitalId: req.params.id,
       requesterId: req.user.id,
       requesterRole: req.user.role,
+      language: getRequestLanguage(req),
     });
 
     return sendSuccess(res, "Rejected doctors fetched successfully", data);
@@ -171,6 +175,7 @@ const getDepartmentAssignments = async (req, res) => {
       hospitalId: req.params.id,
       requesterId: req.user.id,
       requesterRole: req.user.role,
+      language: getRequestLanguage(req),
     });
 
     return sendSuccess(res, "Department assignments fetched successfully", data);

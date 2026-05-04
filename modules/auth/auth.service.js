@@ -139,6 +139,7 @@ const register = async (payload) => {
       status: approvalStatus,
       selectedHospitals: [],
       approvedHospitals: [],
+      translations: payload.translations || null,
     });
 
     await userRepository.updateById(user._id, {
@@ -164,6 +165,7 @@ const register = async (payload) => {
       email,
       departments,
       status: approvalStatus,
+      translations: payload.translations || null,
     });
 
     await userRepository.updateById(user._id, {

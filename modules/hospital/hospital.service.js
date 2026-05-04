@@ -10,6 +10,10 @@ const { ONBOARDING_STATUS, ROLES, APPROVAL_STATUS } = require("../../shared/util
 const { createHttpError } = require("../../shared/utils/error.util");
 const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.util");
 const { parsePagination, buildSort } = require("../../shared/utils/query.util");
+const {
+  getLocalizedDisplayArray,
+  getLocalizedDisplayValue,
+} = require("../../shared/utils/localization.util");
 
 const resolveHospitalByIdentifier = async (identifier) => {
   let hospital = await Hospital.findById(identifier).populate("departmentId", "departmentName");
@@ -24,25 +28,40 @@ const resolveHospitalByIdentifier = async (identifier) => {
   return hospital;
 };
 
-const mapHospital = (hospital) => ({
+const mapHospital = async (hospital, language = "en") => ({
   id: hospital._id,
   userId: hospital.userId,
   name: hospital.name,
+  displayName: await getLocalizedDisplayValue(hospital.name, language, {
+    translations: hospital?.translations?.name,
+  }),
   location: hospital.location,
+  displayLocation: await getLocalizedDisplayValue(hospital.location, language, {
+    translations: hospital?.translations?.location,
+  }),
   phone: hospital.phone,
   email: hospital.email,
   departments: hospital.departments || [],
+  displayDepartments: await getLocalizedDisplayArray(hospital.departments || [], language, {
+    category: "department",
+    translations: hospital?.translations?.departments,
+  }),
   status: hospital.status,
   subscription_amount: hospital.subscriptionAmount,
   departmentId: hospital.departmentId?._id || null,
   departmentName: hospital.departmentId?.departmentName || null,
+  displayDepartmentName: await getLocalizedDisplayValue(
+    hospital.departmentId?.departmentName || null,
+    language,
+    { category: "department" }
+  ),
   createdAt: hospital.createdAt,
   updatedAt: hospital.updatedAt,
 });
 
 const normalizeApprovalStatus = (status) => String(status || "").trim().toLowerCase();
 
-const listHospitals = async (query = {}) => {
+const listHospitals = async (query = {}, language = "en") => {
   const filters = {};
   const status = normalizeApprovalStatus(query.status);
   if (status && Object.values(APPROVAL_STATUS).includes(status)) {
@@ -58,7 +77,7 @@ const listHospitals = async (query = {}) => {
   ]);
 
   return {
-    items: hospitals.map(mapHospital),
+    items: await Promise.all(hospitals.map((hospital) => mapHospital(hospital, language))),
     pagination: {
       page,
       limit,
@@ -68,7 +87,7 @@ const listHospitals = async (query = {}) => {
   };
 };
 
-const getHospitalById = async (hospitalId) => {
+const getHospitalById = async (hospitalId, language = "en") => {
   if (!mongoose.isValidObjectId(hospitalId)) {
     throw createHttpError(400, "Invalid hospital id");
   }
@@ -79,7 +98,7 @@ const getHospitalById = async (hospitalId) => {
     throw createHttpError(404, "Hospital not found");
   }
 
-  return mapHospital(hospital);
+  return mapHospital(hospital, language);
 };
 
 const createHospitalProfile = async (payload, authUser) => {
@@ -101,6 +120,7 @@ const createHospitalProfile = async (payload, authUser) => {
     email: user.email,
     departments: payload.departments,
     status: getApprovalStatusFromLoginStatus(user.loginStatus),
+    translations: payload.translations,
   });
 
   user.name = payload.name;
@@ -182,44 +202,56 @@ const ensureDoctorApprovedForHospital = async ({ hospitalId, doctorId }) => {
   return doctor;
 };
 
-const mapDepartmentAssignment = ({ assignment, doctor, department }) => ({
-  doctorId:
-    doctor?._id ||
-    assignment?.doctorId?._id ||
-    assignment?.doctorId ||
-    null,
-  doctorName: doctor?.name || assignment?.doctorId?.name || null,
-  department: department?.departmentName || assignment?.departmentId?.departmentName || null,
-});
+const mapDepartmentAssignment = async ({ assignment, doctor, department }, language = "en") => {
+  const doctorName = doctor?.name || assignment?.doctorId?.name || null;
+  const departmentName = department?.departmentName || assignment?.departmentId?.departmentName || null;
+  return {
+    doctorId:
+      doctor?._id ||
+      assignment?.doctorId?._id ||
+      assignment?.doctorId ||
+      null,
+    doctorName,
+    displayDoctorName: await getLocalizedDisplayValue(doctorName, language, {
+      translations: doctor?.translations?.name || assignment?.doctorId?.translations?.name,
+    }),
+    department: departmentName,
+    displayDepartment: await getLocalizedDisplayValue(departmentName, language, {
+      category: "department",
+    }),
+  };
+};
 
-const getPendingDoctors = async ({ hospitalId, requesterId, requesterRole }) => {
+const getPendingDoctors = async ({ hospitalId, requesterId, requesterRole, language = "en" }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
-  const pendingDoctors = await doctorService.getPendingDoctorsForHospital(hospital._id);
+  const pendingDoctors = await doctorService.getPendingDoctorsForHospital(hospital._id, language);
 
   return {
-    hospital: mapHospital(hospital),
+    hospital: await mapHospital(hospital, language),
     doctors: pendingDoctors,
   };
 };
 
-const getApprovedDoctors = async ({ hospitalId, requesterId, requesterRole }) => {
+const getApprovedDoctors = async ({ hospitalId, requesterId, requesterRole, language = "en" }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
   const doctors = await Doctor.find({ approvedHospitals: hospital._id })
     .sort({ createdAt: -1 })
     .lean();
 
   return {
-    hospital: mapHospital(hospital),
-    doctors: doctors.map(doctorService.mapApprovedDoctorForHospital),
+    hospital: await mapHospital(hospital, language),
+    doctors: await Promise.all(
+      doctors.map((doctor) => doctorService.mapApprovedDoctorForHospital(doctor, language))
+    ),
   };
 };
 
-const getRejectedDoctors = async ({ hospitalId, requesterId, requesterRole }) => {
+const getRejectedDoctors = async ({ hospitalId, requesterId, requesterRole, language = "en" }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
-  const doctors = await doctorService.getRejectedDoctorsForHospital(hospital._id);
+  const doctors = await doctorService.getRejectedDoctorsForHospital(hospital._id, language);
 
   return {
-    hospital: mapHospital(hospital),
+    hospital: await mapHospital(hospital, language),
     doctors,
   };
 };
@@ -249,7 +281,7 @@ const getSubscription = async ({ hospitalId, requesterId, requesterRole }) =>
     requesterRole,
   });
 
-const getDepartmentAssignments = async ({ hospitalId, requesterId, requesterRole }) => {
+const getDepartmentAssignments = async ({ hospitalId, requesterId, requesterRole, language = "en" }) => {
   const hospital = await validateHospitalOwnership({ hospitalId, requesterId, requesterRole });
 
   const assignments = await HospitalDoctorDepartmentAssignment.find({
@@ -261,8 +293,10 @@ const getDepartmentAssignments = async ({ hospitalId, requesterId, requesterRole
     .lean();
 
   return {
-    items: assignments.map((assignment) =>
-      mapDepartmentAssignment({ assignment })
+    items: await Promise.all(
+      assignments.map((assignment) =>
+        mapDepartmentAssignment({ assignment }, language)
+      )
     ),
   };
 };

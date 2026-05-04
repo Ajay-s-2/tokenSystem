@@ -1,5 +1,6 @@
 const doctorService = require("./doctor.service");
 const { sendSuccess, sendError } = require("../../shared/utils/response.util");
+const { getRequestLanguage } = require("../../shared/utils/localization.util");
 
 const createDoctor = async (req, res) => {
   try {
@@ -12,7 +13,10 @@ const createDoctor = async (req, res) => {
 
 const listDoctors = async (req, res) => {
   try {
-    const doctors = await doctorService.listApprovedDoctorsForHospitalUser(req.user);
+    const doctors = await doctorService.listApprovedDoctorsForHospitalUser(
+      req.user,
+      getRequestLanguage(req)
+    );
     return sendSuccess(res, "Approved doctors fetched successfully", doctors);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -21,7 +25,7 @@ const listDoctors = async (req, res) => {
 
 const getDoctorById = async (req, res) => {
   try {
-    const doctor = await doctorService.getDoctorById(req.params.id);
+    const doctor = await doctorService.getDoctorById(req.params.id, getRequestLanguage(req));
     return sendSuccess(res, "Doctor fetched successfully", doctor);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -34,6 +38,7 @@ const getDoctorSubscriptionSummary = async (req, res) => {
       doctorId: req.params.id,
       requesterId: req.user.id,
       requesterRole: req.user.role,
+      language: getRequestLanguage(req),
     });
 
     return sendSuccess(res, "Doctor subscription summary fetched successfully", summary);

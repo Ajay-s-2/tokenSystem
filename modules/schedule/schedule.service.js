@@ -14,6 +14,7 @@ const {
   generateTimeSlots,
   formatCreatedAt,
 } = require("./schedule.utils");
+const { getLocalizedDisplayValue } = require("../../shared/utils/localization.util");
 
 const CONSULTATION_TIME_OPTIONS = [15, 30];
 const OVERLAP_ERROR_MESSAGE = "Schedule time overlaps with existing schedule";
@@ -57,7 +58,7 @@ const mapSchedule = (schedule) => {
   };
 };
 
-const mapToken = (token) => {
+const mapToken = async (token, language = "en") => {
   const source = typeof token.toObject === "function" ? token.toObject() : token;
 
   return {
@@ -68,12 +69,17 @@ const mapToken = (token) => {
     doctorUserId: String(source.doctorUserId),
     tokenNumber: source.tokenNumber,
     patientName: source.patientName,
+    displayPatientName: await getLocalizedDisplayValue(source.patientName, language),
     dob: source.dob,
     bloodGroup: source.bloodGroup,
     aadhaar: source.aadhaar || "",
     contact: source.contact,
     department: source.department,
+    displayDepartment: await getLocalizedDisplayValue(source.department, language, {
+      category: "department",
+    }),
     doctorName: source.doctorName,
+    displayDoctorName: await getLocalizedDisplayValue(source.doctorName, language),
     date: source.date,
     time: source.time,
     status:
@@ -509,7 +515,7 @@ const updateSchedule = async (scheduleId, payload, authUser) => {
   return mapSchedule(schedule);
 };
 
-const listTokens = async (query, authUser) => {
+const listTokens = async (query, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
   const filters = { hospitalId: hospital._id };
 
@@ -532,10 +538,10 @@ const listTokens = async (query, authUser) => {
   }
 
   const tokens = await PatientToken.find(filters).sort({ createdAt: -1 });
-  return tokens.map(mapToken);
+  return Promise.all(tokens.map((token) => mapToken(token, language)));
 };
 
-const assignToken = async (payload, authUser) => {
+const assignToken = async (payload, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
   const date = payload.date ? normalizeDate(payload.date) : getTodayDateString();
 
@@ -635,15 +641,19 @@ const assignToken = async (payload, authUser) => {
 
     const refreshedSchedule = await DoctorSchedule.findById(bookedSchedule._id);
 
-    return {
-      assignment: {
-        tokenNumber: token.tokenNumber,
-        doctorName: token.doctorName,
-        department: token.department,
-        date: token.date,
-        time: token.time,
-      },
-      token: mapToken(token),
+      return {
+        assignment: {
+          tokenNumber: token.tokenNumber,
+          doctorName: token.doctorName,
+          displayDoctorName: await getLocalizedDisplayValue(token.doctorName, language),
+          department: token.department,
+          displayDepartment: await getLocalizedDisplayValue(token.department, language, {
+            category: "department",
+          }),
+          date: token.date,
+          time: token.time,
+        },
+      token: await mapToken(token, language),
       schedule: mapSchedule(refreshedSchedule),
     };
   }
@@ -672,7 +682,7 @@ const deleteSchedule = async (scheduleId, authUser) => {
   };
 };
 
-const updateTokenStatus = async (tokenId, statusValue, authUser) => {
+const updateTokenStatus = async (tokenId, statusValue, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
 
   if (!mongoose.isValidObjectId(tokenId)) {
@@ -692,10 +702,10 @@ const updateTokenStatus = async (tokenId, statusValue, authUser) => {
   token.status = nextStatus;
   await token.save();
 
-  return mapToken(token);
+  return mapToken(token, language);
 };
 
-const updateToken = async (tokenId, payload, authUser) => {
+const updateToken = async (tokenId, payload, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
 
   if (!mongoose.isValidObjectId(tokenId)) {
@@ -719,7 +729,7 @@ const updateToken = async (tokenId, payload, authUser) => {
 
   await token.save();
 
-  return mapToken(token);
+  return mapToken(token, language);
 };
 
 const deleteToken = async (tokenId, authUser) => {

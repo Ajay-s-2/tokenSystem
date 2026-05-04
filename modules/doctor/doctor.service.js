@@ -5,6 +5,7 @@ const DoctorSubscription = require("../doctor-subscription/doctor-subscription.m
 const { ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
 const { getApprovalStatusFromLoginStatus } = require("../../shared/utils/status.util");
+const { getLocalizedDisplayValue } = require("../../shared/utils/localization.util");
 
 const resolveDoctorByIdentifier = async (identifier) => {
   let doctor = await Doctor.findById(identifier)
@@ -22,48 +23,73 @@ const resolveDoctorByIdentifier = async (identifier) => {
   return doctor;
 };
 
-const mapDoctor = (doctor) => ({
+const mapHospitalReference = async (hospital, language = "en") => ({
+  id: hospital._id,
+  name: hospital.name,
+  displayName: await getLocalizedDisplayValue(hospital.name, language, {
+    translations: hospital?.translations?.name,
+  }),
+  email: hospital.email,
+  location: hospital.location,
+  displayLocation: await getLocalizedDisplayValue(hospital.location, language, {
+    translations: hospital?.translations?.location,
+  }),
+});
+
+const mapDoctor = async (doctor, language = "en") => ({
   id: doctor._id,
   userId: doctor.userId,
   name: doctor.name,
+  displayName: await getLocalizedDisplayValue(doctor.name, language, {
+    translations: doctor?.translations?.name,
+  }),
   gender: doctor.gender,
+  displayGender: await getLocalizedDisplayValue(doctor.gender, language, {
+    category: "gender",
+    translations: doctor?.translations?.gender,
+  }),
   dob: doctor.dob,
   blood_group: doctor.bloodGroup,
   medical_registration_id: doctor.medicalRegistrationId || null,
   phone: doctor.phone,
   email: doctor.email,
   department: doctor.department,
+  displayDepartment: await getLocalizedDisplayValue(doctor.department, language, {
+    category: "department",
+    translations: doctor?.translations?.department,
+  }),
   specialization: doctor.specialization || null,
+  displaySpecialization: await getLocalizedDisplayValue(doctor.specialization || null, language, {
+    translations: doctor?.translations?.specialization,
+  }),
   status: doctor.status,
-  selected_hospitals: (doctor.selectedHospitals || []).map((hospital) => ({
-    id: hospital._id,
-    name: hospital.name,
-    email: hospital.email,
-    location: hospital.location,
-  })),
-  approved_hospitals: (doctor.approvedHospitals || []).map((hospital) => ({
-    id: hospital._id,
-    name: hospital.name,
-    email: hospital.email,
-    location: hospital.location,
-  })),
-  rejected_hospitals: (doctor.rejectedHospitals || []).map((hospital) => ({
-    id: hospital._id,
-    name: hospital.name,
-    email: hospital.email,
-    location: hospital.location,
-  })),
+  selected_hospitals: await Promise.all(
+    (doctor.selectedHospitals || []).map((hospital) => mapHospitalReference(hospital, language))
+  ),
+  approved_hospitals: await Promise.all(
+    (doctor.approvedHospitals || []).map((hospital) => mapHospitalReference(hospital, language))
+  ),
+  rejected_hospitals: await Promise.all(
+    (doctor.rejectedHospitals || []).map((hospital) => mapHospitalReference(hospital, language))
+  ),
   createdAt: doctor.createdAt,
   updatedAt: doctor.updatedAt,
 });
 
-const mapApprovedDoctorForHospital = (doctor) => ({
+const mapApprovedDoctorForHospital = async (doctor, language = "en") => ({
   id: doctor._id,
   userId: doctor.userId,
   name: doctor.name,
+  displayName: await getLocalizedDisplayValue(doctor.name, language, {
+    translations: doctor?.translations?.name,
+  }),
   email: doctor.email,
   phone: doctor.phone,
   department: doctor.department,
+  displayDepartment: await getLocalizedDisplayValue(doctor.department, language, {
+    category: "department",
+    translations: doctor?.translations?.department,
+  }),
   status: doctor.status,
   isApproved: true,
   createdAt: doctor.createdAt,
@@ -71,7 +97,7 @@ const mapApprovedDoctorForHospital = (doctor) => ({
 
 const DOCTOR_SUBSCRIPTION_STEP = 500;
 
-const mapDoctorSubscriptionSummary = ({ doctor, subscription }) => {
+const mapDoctorSubscriptionSummary = async ({ doctor, subscription }, language = "en") => {
   const approvedCount = Array.isArray(doctor.approvedHospitals) ? doctor.approvedHospitals.length : 0;
   const pendingCount = Array.isArray(doctor.selectedHospitals) ? doctor.selectedHospitals.length : 0;
   const rejectedCount = Array.isArray(doctor.rejectedHospitals) ? doctor.rejectedHospitals.length : 0;
@@ -84,6 +110,9 @@ const mapDoctorSubscriptionSummary = ({ doctor, subscription }) => {
     doctorId: doctor._id,
     userId: doctor.userId,
     fullName: doctor.name,
+    displayFullName: await getLocalizedDisplayValue(doctor.name, language, {
+      translations: doctor?.translations?.name,
+    }),
     ratePerHospital,
     hospitalLimit,
     usedHospitalSlots,
@@ -122,6 +151,7 @@ const createDoctorProfile = async (payload, authUser) => {
     selectedHospitals: [],
     approvedHospitals: [],
     rejectedHospitals: [],
+    translations: payload.translations,
   });
 
   user.name = payload.name;
@@ -132,17 +162,17 @@ const createDoctorProfile = async (payload, authUser) => {
   return resolveDoctorByIdentifier(doctor._id);
 };
 
-const getDoctorById = async (doctorId) => {
+const getDoctorById = async (doctorId, language = "en") => {
   const doctor = await resolveDoctorByIdentifier(doctorId);
 
   if (!doctor) {
     throw createHttpError(404, "Doctor not found");
   }
 
-  return mapDoctor(doctor);
+  return mapDoctor(doctor, language);
 };
 
-const getDoctorSubscriptionSummary = async ({ doctorId, requesterId, requesterRole }) => {
+const getDoctorSubscriptionSummary = async ({ doctorId, requesterId, requesterRole, language = "en" }) => {
   const doctor = await resolveDoctorByIdentifier(doctorId);
 
   if (!doctor) {
@@ -159,10 +189,10 @@ const getDoctorSubscriptionSummary = async ({ doctorId, requesterId, requesterRo
   }
 
   const subscription = await DoctorSubscription.findOne({ doctorId: doctor._id }).lean();
-  return mapDoctorSubscriptionSummary({ doctor, subscription });
+  return mapDoctorSubscriptionSummary({ doctor, subscription }, language);
 };
 
-const listApprovedDoctorsForHospitalUser = async (authUser) => {
+const listApprovedDoctorsForHospitalUser = async (authUser, language = "en") => {
   if (!authUser?.id || authUser.role !== ROLES.HOSPITAL) {
     throw createHttpError(403, "Only hospital users can fetch approved doctors");
   }
@@ -173,7 +203,7 @@ const listApprovedDoctorsForHospitalUser = async (authUser) => {
   }
 
   const doctors = await Doctor.find({ approvedHospitals: hospital._id }).sort({ name: 1 }).lean();
-  return doctors.map(mapApprovedDoctorForHospital);
+  return Promise.all(doctors.map((doctor) => mapApprovedDoctorForHospital(doctor, language)));
 };
 
 const selectHospital = async ({ doctorId, hospitalId, requesterId, requesterRole }) => {
@@ -272,7 +302,7 @@ const removeHospitalSelection = async ({ doctorId, hospitalId, requesterId, requ
   return getDoctorById(doctor._id);
 };
 
-const getPendingDoctorsForHospital = async (hospitalId) => {
+const getPendingDoctorsForHospital = async (hospitalId, language = "en") => {
   const doctors = await Doctor.find({
     selectedHospitals: hospitalId,
     approvedHospitals: { $nin: [hospitalId] },
@@ -281,33 +311,47 @@ const getPendingDoctorsForHospital = async (hospitalId) => {
     .sort({ createdAt: -1 })
     .lean();
 
-  return doctors.map((doctor) => ({
+  return Promise.all(doctors.map(async (doctor) => ({
     id: doctor._id,
     userId: doctor.userId,
     name: doctor.name,
+    displayName: await getLocalizedDisplayValue(doctor.name, language, {
+      translations: doctor?.translations?.name,
+    }),
     email: doctor.email,
     phone: doctor.phone,
     department: doctor.department,
+    displayDepartment: await getLocalizedDisplayValue(doctor.department, language, {
+      category: "department",
+      translations: doctor?.translations?.department,
+    }),
     status: doctor.status,
     createdAt: doctor.createdAt,
-  }));
+  })));
 };
 
-const getRejectedDoctorsForHospital = async (hospitalId) => {
+const getRejectedDoctorsForHospital = async (hospitalId, language = "en") => {
   const doctors = await Doctor.find({ rejectedHospitals: hospitalId })
     .sort({ createdAt: -1 })
     .lean();
 
-  return doctors.map((doctor) => ({
+  return Promise.all(doctors.map(async (doctor) => ({
     id: doctor._id,
     userId: doctor.userId,
     name: doctor.name,
+    displayName: await getLocalizedDisplayValue(doctor.name, language, {
+      translations: doctor?.translations?.name,
+    }),
     email: doctor.email,
     phone: doctor.phone,
     department: doctor.department,
+    displayDepartment: await getLocalizedDisplayValue(doctor.department, language, {
+      category: "department",
+      translations: doctor?.translations?.department,
+    }),
     status: doctor.status,
     createdAt: doctor.createdAt,
-  }));
+  })));
 };
 
 const moveDoctorHospitalApproval = async ({ hospitalId, doctorId, approve }) => {

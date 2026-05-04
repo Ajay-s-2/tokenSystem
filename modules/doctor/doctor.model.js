@@ -18,6 +18,12 @@ const DoctorSchema = new mongoose.Schema(
     email: { type: String, required: true, trim: true, lowercase: true },
     department: { type: String, required: true, trim: true },
     specialization: { type: String, trim: true, default: null },
+    translations: {
+      name: { type: mongoose.Schema.Types.Mixed, default: null },
+      gender: { type: mongoose.Schema.Types.Mixed, default: null },
+      department: { type: mongoose.Schema.Types.Mixed, default: null },
+      specialization: { type: mongoose.Schema.Types.Mixed, default: null },
+    },
     status: {
       type: String,
       enum: Object.values(APPROVAL_STATUS),

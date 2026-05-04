@@ -14,6 +14,11 @@ const HospitalSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
     departments: [{ type: String, trim: true }],
+    translations: {
+      name: { type: mongoose.Schema.Types.Mixed, default: null },
+      location: { type: mongoose.Schema.Types.Mixed, default: null },
+      departments: { type: mongoose.Schema.Types.Mixed, default: null },
+    },
     status: {
       type: String,
       enum: Object.values(APPROVAL_STATUS),

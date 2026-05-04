@@ -8,6 +8,10 @@ const { LOGIN_STATUS, ONBOARDING_STATUS, ROLES } = require("../../shared/utils/c
 const { createHttpError } = require("../../shared/utils/error.util");
 const otpService = require("../../shared/services/otp.service");
 const {
+  getLocalizedDisplayArray,
+  getLocalizedDisplayValue,
+} = require("../../shared/utils/localization.util");
+const {
   getLoginStatusFromApprovalStatus,
   getApprovalStatusFromLoginStatus,
 } = require("../../shared/utils/status.util");
@@ -23,26 +27,64 @@ const normalizeAdminSort = (sort) =>
     .map((field) => (field === "status" ? "loginStatus" : field === "-status" ? "-loginStatus" : field))
     .join(",");
 
-const mapAdminEntity = (user, profile = null) => ({
-  id: profile?._id || user._id,
-  userId: user._id,
-  profileId: profile?._id || null,
-  name: profile?.name || user.name,
-  email: user.email,
-  role: user.role,
-  status: profile?.status || getApprovalStatusFromLoginStatus(user.loginStatus),
-  phone: profile?.phone || null,
-  gender: profile?.gender || user.gender || null,
-  department: profile?.department || null,
-  specialization: profile?.specialization || user.specialization || null,
-  medicalRegistrationId: profile?.medicalRegistrationId || null,
-  bloodGroup: profile?.bloodGroup || null,
-  location: profile?.location || null,
-  departments: profile?.departments || [],
-  subscription_amount: profile?.subscriptionAmount ?? null,
-  createdAt: profile?.createdAt || user.createdAt,
-  updatedAt: profile?.updatedAt || user.updatedAt,
-});
+const mapAdminEntity = async (user, profile = null, language = "en") => {
+  const name = profile?.name || user.name;
+  const gender = profile?.gender || user.gender || null;
+  const department = profile?.department || null;
+  const specialization = profile?.specialization || user.specialization || null;
+  const location = profile?.location || null;
+  const departments = profile?.departments || [];
+
+  const [displayName, displayGender, displayDepartment, displaySpecialization, displayLocation, displayDepartments] =
+    await Promise.all([
+      getLocalizedDisplayValue(name, language, { translations: profile?.translations?.name }),
+      getLocalizedDisplayValue(gender, language, {
+        category: "gender",
+        translations: profile?.translations?.gender,
+      }),
+      getLocalizedDisplayValue(department, language, {
+        category: "department",
+        translations: profile?.translations?.department,
+      }),
+      getLocalizedDisplayValue(specialization, language, {
+        translations: profile?.translations?.specialization,
+      }),
+      getLocalizedDisplayValue(location, language, {
+        translations: profile?.translations?.location,
+      }),
+      getLocalizedDisplayArray(departments, language, {
+        category: "department",
+        translations: profile?.translations?.departments,
+      }),
+    ]);
+
+  return {
+    id: profile?._id || user._id,
+    userId: user._id,
+    profileId: profile?._id || null,
+    name,
+    displayName,
+    email: user.email,
+    role: user.role,
+    status: profile?.status || getApprovalStatusFromLoginStatus(user.loginStatus),
+    phone: profile?.phone || null,
+    gender,
+    displayGender,
+    department,
+    displayDepartment,
+    specialization,
+    displaySpecialization,
+    medicalRegistrationId: profile?.medicalRegistrationId || null,
+    bloodGroup: profile?.bloodGroup || null,
+    location,
+    displayLocation,
+    departments,
+    displayDepartments,
+    subscription_amount: profile?.subscriptionAmount ?? null,
+    createdAt: profile?.createdAt || user.createdAt,
+    updatedAt: profile?.updatedAt || user.updatedAt,
+  };
+};
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
@@ -52,7 +94,7 @@ const sanitizeString = (value) => {
   return trimmed === "" ? undefined : trimmed;
 };
 
-const listEntitiesByRole = async ({ role, profileModel, query }) => {
+const listEntitiesByRole = async ({ role, profileModel, query, language = "en" }) => {
   const filters = { role };
   const loginStatus = getLoginStatusFromApprovalStatus(query.status);
 
@@ -75,7 +117,9 @@ const listEntitiesByRole = async ({ role, profileModel, query }) => {
   const profileMap = new Map(profiles.map((profile) => [String(profile.userId), profile]));
 
   return {
-    items: users.map((user) => mapAdminEntity(user, profileMap.get(String(user._id)))),
+    items: await Promise.all(
+      users.map((user) => mapAdminEntity(user, profileMap.get(String(user._id)), language))
+    ),
     pagination: {
       page,
       limit,
@@ -105,7 +149,7 @@ const resolveEntityAndProfile = async ({ id, role, profileModel }) => {
   return { user, profile };
 };
 
-const updateEntityStatus = async ({ id, status, role, profileModel }) => {
+const updateEntityStatus = async ({ id, status, role, profileModel, language = "en" }) => {
   const loginStatus = getLoginStatusFromApprovalStatus(status);
   if (!loginStatus) {
     throw createHttpError(400, "Invalid status value");
@@ -121,10 +165,10 @@ const updateEntityStatus = async ({ id, status, role, profileModel }) => {
     await profile.save();
   }
 
-  return mapAdminEntity(user.toObject(), profile ? profile.toObject() : null);
+  return mapAdminEntity(user.toObject(), profile ? profile.toObject() : null, language);
 };
 
-const updateDoctorProfile = async (id, payload) => {
+const updateDoctorProfile = async (id, payload, language = "en") => {
   const { user, profile } = await resolveEntityAndProfile({
     id,
     role: ROLES.DOCTOR,
@@ -181,6 +225,10 @@ const updateDoctorProfile = async (id, payload) => {
     updates.medicalRegistrationId = registrationId || null;
   }
 
+  if (payload.translations && typeof payload.translations === "object") {
+    updates.translations = payload.translations;
+  }
+
   if (Object.keys(updates).length === 0) {
     throw createHttpError(400, "No valid fields provided to update");
   }
@@ -193,10 +241,10 @@ const updateDoctorProfile = async (id, payload) => {
   const refreshedUser = await User.findById(user._id).lean();
   const refreshedProfile = await Doctor.findById(profile._id).lean();
 
-  return mapAdminEntity(refreshedUser, refreshedProfile);
+  return mapAdminEntity(refreshedUser, refreshedProfile, language);
 };
 
-const updateHospitalProfile = async (id, payload) => {
+const updateHospitalProfile = async (id, payload, language = "en") => {
   const { user, profile } = await resolveEntityAndProfile({
     id,
     role: ROLES.HOSPITAL,
@@ -232,6 +280,10 @@ const updateHospitalProfile = async (id, payload) => {
       : [];
   }
 
+  if (payload.translations && typeof payload.translations === "object") {
+    updates.translations = payload.translations;
+  }
+
   if (Object.keys(updates).length === 0) {
     throw createHttpError(400, "No valid fields provided to update");
   }
@@ -244,7 +296,7 @@ const updateHospitalProfile = async (id, payload) => {
   const refreshedUser = await User.findById(user._id).lean();
   const refreshedProfile = await Hospital.findById(profile._id).lean();
 
-  return mapAdminEntity(refreshedUser, refreshedProfile);
+  return mapAdminEntity(refreshedUser, refreshedProfile, language);
 };
 
 const approveUser = async (userId) => {
@@ -405,34 +457,38 @@ const verifyUserEmailChange = async (userId, otp) => {
   };
 };
 
-const getDoctors = async (query) =>
+const getDoctors = async (query, language = "en") =>
   listEntitiesByRole({
     role: ROLES.DOCTOR,
     profileModel: Doctor,
     query,
+    language,
   });
 
-const getHospitals = async (query) =>
+const getHospitals = async (query, language = "en") =>
   listEntitiesByRole({
     role: ROLES.HOSPITAL,
     profileModel: Hospital,
     query,
+    language,
   });
 
-const updateDoctorStatus = async (id, status) =>
+const updateDoctorStatus = async (id, status, language = "en") =>
   updateEntityStatus({
     id,
     status,
     role: ROLES.DOCTOR,
     profileModel: Doctor,
+    language,
   });
 
-const updateHospitalStatus = async (id, status) =>
+const updateHospitalStatus = async (id, status, language = "en") =>
   updateEntityStatus({
     id,
     status,
     role: ROLES.HOSPITAL,
     profileModel: Hospital,
+    language,
   });
 
 const setDefaultSubscription = async (amount) =>
@@ -448,14 +504,17 @@ const setHospitalSubscription = async ({ hospitalId, amount }) =>
 
 const DOCTOR_SUBSCRIPTION_STEP = 500;
 
-const mapDoctorSubscriptionRecord = ({ doctor, subscription }) => ({
+const mapDoctorSubscriptionRecord = async ({ doctor, subscription }, language = "en") => ({
   id: doctor._id,
   fullName: doctor.name,
+  displayFullName: await getLocalizedDisplayValue(doctor.name, language, {
+    translations: doctor?.translations?.name,
+  }),
   hospitalCount: Array.isArray(doctor.approvedHospitals) ? doctor.approvedHospitals.length : 0,
   ratePerHospital: subscription?.ratePerHospital ?? DOCTOR_SUBSCRIPTION_STEP,
 });
 
-const getDoctorSubscriptions = async () => {
+const getDoctorSubscriptions = async (language = "en") => {
   const doctors = await Doctor.find().sort({ name: 1 }).lean();
   const doctorIds = doctors.map((doctor) => doctor._id);
   const subscriptions = await DoctorSubscription.find({ doctorId: { $in: doctorIds } }).lean();
@@ -464,16 +523,16 @@ const getDoctorSubscriptions = async () => {
   );
 
   return {
-    items: doctors.map((doctor) =>
+    items: await Promise.all(doctors.map((doctor) =>
       mapDoctorSubscriptionRecord({
         doctor,
         subscription: subscriptionMap.get(String(doctor._id)),
-      })
-    ),
+      }, language)
+    )),
   };
 };
 
-const updateDoctorSubscription = async (doctorId, ratePerHospital) => {
+const updateDoctorSubscription = async (doctorId, ratePerHospital, language = "en") => {
   const numericRate = Number(ratePerHospital);
   if (Number.isNaN(numericRate) || numericRate < DOCTOR_SUBSCRIPTION_STEP || numericRate % DOCTOR_SUBSCRIPTION_STEP !== 0) {
     throw createHttpError(400, "Subscription amount must be Rs 500 or more, in Rs 500 steps");
@@ -490,7 +549,7 @@ const updateDoctorSubscription = async (doctorId, ratePerHospital) => {
     { new: true, upsert: true, setDefaultsOnInsert: true }
   ).lean();
 
-  return mapDoctorSubscriptionRecord({ doctor, subscription });
+  return mapDoctorSubscriptionRecord({ doctor, subscription }, language);
 };
 
 module.exports = {

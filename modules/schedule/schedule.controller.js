@@ -1,5 +1,6 @@
 const scheduleService = require("./schedule.service");
 const { sendSuccess, sendError } = require("../../shared/utils/response.util");
+const { getRequestLanguage } = require("../../shared/utils/localization.util");
 
 const getBootstrapData = async (req, res) => {
   try {
@@ -57,7 +58,7 @@ const deleteSchedule = async (req, res) => {
 
 const listTokens = async (req, res) => {
   try {
-    const tokens = await scheduleService.listTokens(req.query, req.user);
+    const tokens = await scheduleService.listTokens(req.query, req.user, getRequestLanguage(req));
     return sendSuccess(res, "Patient tokens fetched successfully", tokens);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -66,7 +67,7 @@ const listTokens = async (req, res) => {
 
 const assignToken = async (req, res) => {
   try {
-    const result = await scheduleService.assignToken(req.body, req.user);
+    const result = await scheduleService.assignToken(req.body, req.user, getRequestLanguage(req));
     return sendSuccess(res, "Patient token assigned successfully", result, 201);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -78,7 +79,8 @@ const updateTokenStatus = async (req, res) => {
     const token = await scheduleService.updateTokenStatus(
       req.params.tokenId,
       req.body.status,
-      req.user
+      req.user,
+      getRequestLanguage(req)
     );
     return sendSuccess(res, "Patient token status updated successfully", token);
   } catch (error) {
@@ -88,7 +90,12 @@ const updateTokenStatus = async (req, res) => {
 
 const updateToken = async (req, res) => {
   try {
-    const token = await scheduleService.updateToken(req.params.tokenId, req.body, req.user);
+    const token = await scheduleService.updateToken(
+      req.params.tokenId,
+      req.body,
+      req.user,
+      getRequestLanguage(req)
+    );
     return sendSuccess(res, "Patient token updated successfully", token);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);

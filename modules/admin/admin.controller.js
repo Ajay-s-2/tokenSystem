@@ -1,9 +1,10 @@
 const adminService = require("./admin.service");
 const { sendSuccess, sendError } = require("../../shared/utils/response.util");
+const { getRequestLanguage } = require("../../shared/utils/localization.util");
 
 const getDoctors = async (req, res) => {
   try {
-    const data = await adminService.getDoctors(req.query);
+    const data = await adminService.getDoctors(req.query, getRequestLanguage(req));
     return sendSuccess(res, "Doctors fetched successfully", data);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -12,7 +13,7 @@ const getDoctors = async (req, res) => {
 
 const getHospitals = async (req, res) => {
   try {
-    const data = await adminService.getHospitals(req.query);
+    const data = await adminService.getHospitals(req.query, getRequestLanguage(req));
     return sendSuccess(res, "Hospitals fetched successfully", data);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -21,7 +22,11 @@ const getHospitals = async (req, res) => {
 
 const updateDoctorStatus = async (req, res) => {
   try {
-    const doctor = await adminService.updateDoctorStatus(req.params.id, req.body.status);
+    const doctor = await adminService.updateDoctorStatus(
+      req.params.id,
+      req.body.status,
+      getRequestLanguage(req)
+    );
     return sendSuccess(res, "Doctor status updated successfully", doctor);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -30,7 +35,11 @@ const updateDoctorStatus = async (req, res) => {
 
 const updateHospitalStatus = async (req, res) => {
   try {
-    const hospital = await adminService.updateHospitalStatus(req.params.id, req.body.status);
+    const hospital = await adminService.updateHospitalStatus(
+      req.params.id,
+      req.body.status,
+      getRequestLanguage(req)
+    );
     return sendSuccess(res, "Hospital status updated successfully", hospital);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -39,7 +48,11 @@ const updateHospitalStatus = async (req, res) => {
 
 const updateDoctorProfile = async (req, res) => {
   try {
-    const doctor = await adminService.updateDoctorProfile(req.params.id, req.body);
+    const doctor = await adminService.updateDoctorProfile(
+      req.params.id,
+      req.body,
+      getRequestLanguage(req)
+    );
     return sendSuccess(res, "Doctor updated successfully", doctor);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -48,7 +61,11 @@ const updateDoctorProfile = async (req, res) => {
 
 const updateHospitalProfile = async (req, res) => {
   try {
-    const hospital = await adminService.updateHospitalProfile(req.params.id, req.body);
+    const hospital = await adminService.updateHospitalProfile(
+      req.params.id,
+      req.body,
+      getRequestLanguage(req)
+    );
     return sendSuccess(res, "Hospital updated successfully", hospital);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -87,7 +104,7 @@ const setHospitalSubscription = async (req, res) => {
 
 const getDoctorSubscriptions = async (req, res) => {
   try {
-    const data = await adminService.getDoctorSubscriptions();
+    const data = await adminService.getDoctorSubscriptions(getRequestLanguage(req));
     return sendSuccess(res, "Doctor subscriptions fetched successfully", data);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -98,7 +115,8 @@ const updateDoctorSubscription = async (req, res) => {
   try {
     const record = await adminService.updateDoctorSubscription(
       req.params.doctorId,
-      req.body.ratePerHospital
+      req.body.ratePerHospital,
+      getRequestLanguage(req)
     );
     return sendSuccess(res, "Doctor subscription updated successfully", record);
   } catch (error) {
