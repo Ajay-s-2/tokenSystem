@@ -4,7 +4,7 @@ const { getRequestLanguage } = require("../../shared/utils/localization.util");
 
 const getBootstrapData = async (req, res) => {
   try {
-    const data = await scheduleService.getBootstrapData(req.user);
+    const data = await scheduleService.getBootstrapData(req.user, req.language);
     return sendSuccess(res, "Schedule bootstrap data fetched successfully", data);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -13,7 +13,7 @@ const getBootstrapData = async (req, res) => {
 
 const listSchedules = async (req, res) => {
   try {
-    const schedules = await scheduleService.listSchedules(req.query, req.user);
+    const schedules = await scheduleService.listSchedules(req.query, req.user, req.language);
     return sendSuccess(res, "Doctor schedules fetched successfully", schedules);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -31,7 +31,7 @@ const getScheduleSummary = async (req, res) => {
 
 const createSchedule = async (req, res) => {
   try {
-    const schedule = await scheduleService.createSchedule(req.body, req.user);
+    const schedule = await scheduleService.createSchedule(req.body, req.user, req.language);
     return sendSuccess(res, "Doctor schedule created successfully", schedule, 201);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -40,7 +40,7 @@ const createSchedule = async (req, res) => {
 
 const updateSchedule = async (req, res) => {
   try {
-    const schedule = await scheduleService.updateSchedule(req.params.scheduleId, req.body, req.user);
+    const schedule = await scheduleService.updateSchedule(req.params.scheduleId, req.body, req.user, req.language);
     return sendSuccess(res, "Doctor schedule updated successfully", schedule);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -58,7 +58,7 @@ const deleteSchedule = async (req, res) => {
 
 const listTokens = async (req, res) => {
   try {
-    const tokens = await scheduleService.listTokens(req.query, req.user, getRequestLanguage(req));
+    const tokens = await scheduleService.listTokens(req.query, req.user, req.language || getRequestLanguage(req));
     return sendSuccess(res, "Patient tokens fetched successfully", tokens);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -67,7 +67,7 @@ const listTokens = async (req, res) => {
 
 const assignToken = async (req, res) => {
   try {
-    const result = await scheduleService.assignToken(req.body, req.user, getRequestLanguage(req));
+    const result = await scheduleService.assignToken(req.body, req.user, req.language || getRequestLanguage(req));
     return sendSuccess(res, "Patient token assigned successfully", result, 201);
   } catch (error) {
     return sendError(res, error.message, error.statusCode || 400, error.errors || null);
@@ -80,7 +80,7 @@ const updateTokenStatus = async (req, res) => {
       req.params.tokenId,
       req.body.status,
       req.user,
-      getRequestLanguage(req)
+      req.language || getRequestLanguage(req)
     );
     return sendSuccess(res, "Patient token status updated successfully", token);
   } catch (error) {
@@ -94,7 +94,7 @@ const updateToken = async (req, res) => {
       req.params.tokenId,
       req.body,
       req.user,
-      getRequestLanguage(req)
+      req.language || getRequestLanguage(req)
     );
     return sendSuccess(res, "Patient token updated successfully", token);
   } catch (error) {

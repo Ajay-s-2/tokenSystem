@@ -70,7 +70,7 @@ function getDictionaryTranslation(text, language, category) {
 }
 
 async function translateWithLibreTranslate(text, language) {
-  const baseUrl = String(process.env.LIBRETRANSLATE_URL || "").trim().replace(/\/+$/, "");
+  const baseUrl = String(process.env.LIBRETRANSLATE_URL || "http://localhost:5000").trim().replace(/\/+$/, "");
   if (!baseUrl || language === DEFAULT_LANGUAGE) {
     return null;
   }

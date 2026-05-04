@@ -6,11 +6,13 @@ const errorMiddleware = require("./middleware/error.middleware");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger.json");
 const { getCorsOrigins, createCorsOriginChecker } = require("./config/cors");
+const languageMiddleware = require("./middleware/language.middleware");
 
 const app = express();
 
 // Parse JSON bodies
 app.use(express.json());
+app.use(languageMiddleware);
 
 // Enable CORS for API clients
 const corsOrigins = getCorsOrigins();

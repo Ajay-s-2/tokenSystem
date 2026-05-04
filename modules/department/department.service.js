@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Department = require("./department.model");
 const Hospital = require("../hospital/hospital.model");
 const userRepository = require("../user/user.repository");
+const { getLocalizedDisplayValue } = require("../../shared/utils/localization.util");
 
 const DEPARTMENT_ID_PREFIX = "DEP";
 
@@ -80,15 +81,20 @@ const createDepartment = async (payload, adminId) => {
   });
 };
 
-const getDepartments = async () => {
+const getDepartments = async (language = "en") => {
   const departments = await Department.find({}, { departmentName: 1 })
     .sort({ departmentName: 1 })
     .lean();
 
-  return departments.map((department) => ({
-    id: department._id,
-    name: department.departmentName,
-  }));
+  return Promise.all(
+    departments.map(async (department) => ({
+      id: department._id,
+      name: department.departmentName,
+      displayName: await getLocalizedDisplayValue(department.departmentName, language, {
+        category: "department",
+      }),
+    }))
+  );
 };
 
 const validateDepartment = async (departmentId) => {

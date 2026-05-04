@@ -1,5 +1,6 @@
 const departmentService = require("./department.service");
 const { sendSuccess, sendError } = require("../../shared/utils/response.util");
+const { getRequestLanguage } = require("../../shared/utils/localization.util");
 
 const createDepartment = async (req, res) => {
   try {
@@ -21,7 +22,7 @@ const createDepartment = async (req, res) => {
 
 const getDepartments = async (req, res) => {
   try {
-    const departments = await departmentService.getDepartments();
+    const departments = await departmentService.getDepartments(req.language || getRequestLanguage(req));
     return sendSuccess(res, "Departments fetched successfully", departments);
   } catch (error) {
     return sendError(res, error.message || "Internal server error", error.statusCode || 500);

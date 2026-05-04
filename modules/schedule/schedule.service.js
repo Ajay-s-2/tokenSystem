@@ -28,7 +28,7 @@ const TOKEN_STATUS_RESPONSE = Object.freeze({
   CALLING: "CALLING",
 });
 
-const mapSchedule = (schedule) => {
+const mapSchedule = async (schedule, language = "en") => {
   const source = typeof schedule.toObject === "function" ? schedule.toObject() : schedule;
   const slots = Array.isArray(source.slots)
     ? source.slots.map((slot) => ({
@@ -44,7 +44,11 @@ const mapSchedule = (schedule) => {
     doctorId: String(source.doctorId),
     doctorUserId: String(source.doctorUserId),
     doctorName: source.doctorName,
+    displayDoctorName: await getLocalizedDisplayValue(source.doctorName, language),
     department: source.department,
+    displayDepartment: await getLocalizedDisplayValue(source.department, language, {
+      category: "department",
+    }),
     date: source.date,
     startTime: source.startTime,
     endTime: source.endTime,
@@ -206,7 +210,7 @@ const ensureValidScheduleDate = (date) => {
   return normalizedDate;
 };
 
-const getBootstrapData = async (authUser) => {
+const getBootstrapData = async (authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
 
   const [approvedDoctors, departments, departmentAssignments] = await Promise.all([
@@ -234,32 +238,59 @@ const getBootstrapData = async (authUser) => {
     ...departments.map((department) => department.departmentName).filter(Boolean),
   ]);
 
+  const departmentList = [...departmentSet].sort((left, right) => left.localeCompare(right));
+
   return {
     hospital: {
       id: String(hospital._id),
       userId: String(hospital.userId),
       name: hospital.name,
+      displayName: await getLocalizedDisplayValue(hospital.name, language, {
+        translations: hospital?.translations?.name,
+      }),
       departments: hospital.departments || [],
       status: hospital.status,
     },
-    departments: [...departmentSet].sort((left, right) => left.localeCompare(right)),
-    doctors: approvedDoctors.map((doctor) => ({
+    departments: departmentList,
+    displayDepartments: await Promise.all(
+      departmentList.map((department) =>
+        getLocalizedDisplayValue(department, language, { category: "department" })
+      )
+    ),
+    doctors: await Promise.all(approvedDoctors.map(async (doctor) => ({
       id: String(doctor._id),
       userId: String(doctor.userId),
       name: doctor.name,
+      displayName: await getLocalizedDisplayValue(doctor.name, language, {
+        translations: doctor?.translations?.name,
+      }),
       email: doctor.email,
       phone: doctor.phone,
       department: doctorAssignmentMap.get(String(doctor._id)) || doctor.department,
+      displayDepartment: await getLocalizedDisplayValue(
+        doctorAssignmentMap.get(String(doctor._id)) || doctor.department,
+        language,
+        {
+          category: "department",
+          translations: doctor?.translations?.department,
+        }
+      ),
       assignedDepartment: doctorAssignmentMap.get(String(doctor._id)) || null,
       status: doctor.status,
       isApproved: true,
-    })),
+    }))),
     consultationTimeOptions: CONSULTATION_TIME_OPTIONS,
-    doctorAssignments: departmentAssignments.map((assignment) => ({
+    doctorAssignments: await Promise.all(departmentAssignments.map(async (assignment) => ({
       doctorId: String(assignment.doctorId._id || assignment.doctorId),
       doctorName: assignment.doctorId?.name || "",
+      displayDoctorName: await getLocalizedDisplayValue(assignment.doctorId?.name || "", language),
       department: assignment.departmentId?.departmentName || "",
-    })),
+      displayDepartment: await getLocalizedDisplayValue(
+        assignment.departmentId?.departmentName || "",
+        language,
+        { category: "department" }
+      ),
+    }))),
   };
 };
 
@@ -286,7 +317,7 @@ const findOverlappingSchedule = async ({
   return DoctorSchedule.findOne(filters).lean();
 };
 
-const listSchedules = async (query, authUser) => {
+const listSchedules = async (query, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
   const filters = { hospitalId: hospital._id };
 
@@ -314,7 +345,7 @@ const listSchedules = async (query, authUser) => {
     createdAt: -1,
   });
 
-  return schedules.map(mapSchedule);
+  return Promise.all(schedules.map((schedule) => mapSchedule(schedule, language)));
 };
 
 const getScheduleSummary = async (query, authUser) => {
@@ -347,7 +378,7 @@ const getScheduleSummary = async (query, authUser) => {
   };
 };
 
-const createSchedule = async (payload, authUser) => {
+const createSchedule = async (payload, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
   const doctor = await getApprovedDoctorForHospital({
     hospitalId: hospital._id,
@@ -423,10 +454,10 @@ const createSchedule = async (payload, authUser) => {
     throw error;
   }
 
-  return mapSchedule(createdSchedule);
+  return mapSchedule(createdSchedule, language);
 };
 
-const updateSchedule = async (scheduleId, payload, authUser) => {
+const updateSchedule = async (scheduleId, payload, authUser, language = "en") => {
   const hospital = await getHospitalForRequester(authUser);
   const schedule = await getScheduleForHospital({
     scheduleId,
@@ -512,7 +543,7 @@ const updateSchedule = async (scheduleId, payload, authUser) => {
     throw error;
   }
 
-  return mapSchedule(schedule);
+  return mapSchedule(schedule, language);
 };
 
 const listTokens = async (query, authUser, language = "en") => {
@@ -654,7 +685,7 @@ const assignToken = async (payload, authUser, language = "en") => {
           time: token.time,
         },
       token: await mapToken(token, language),
-      schedule: mapSchedule(refreshedSchedule),
+      schedule: await mapSchedule(refreshedSchedule, language),
     };
   }
 
