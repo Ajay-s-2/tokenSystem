@@ -13,7 +13,7 @@ const validationMiddleware = (req, res, next) => {
     message: error.msg,
   }));
 
-  return sendError(res, "Validation failed", 422, errors);
+  return sendError(res, "Validation failed", 422, errors, "VALIDATION_ERROR");
 };
 
 module.exports = validationMiddleware;

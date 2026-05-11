@@ -7,6 +7,7 @@ const userRepository = require("../user/user.repository");
 const { LOGIN_STATUS, ONBOARDING_STATUS, ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
 const otpService = require("../../shared/services/otp.service");
+const emailService = require("../../shared/services/email.service");
 const {
   getLocalizedDisplayArray,
   getLocalizedDisplayValue,
@@ -124,6 +125,7 @@ const listEntitiesByRole = async ({ role, profileModel, query, language = "en" }
       page,
       limit,
       total,
+      totalRecords: total,
       totalPages: total === 0 ? 0 : Math.ceil(total / limit),
     },
   };
@@ -402,7 +404,7 @@ const requestUserEmailChange = async (userId, newEmail) => {
     emailChangeOtpExpiresAt: expiresAt,
   });
 
-  console.log("Email Change OTP:", token);
+  await emailService.sendOtpEmail({ to: normalizedEmail, purpose: "admin_email_change", otp: token });
 
   return { message: "OTP sent. Please verify to update the email." };
 };

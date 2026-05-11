@@ -13,6 +13,4 @@ const DoctorSubscriptionSchema = new mongoose.Schema(
   { timestamps: true, collection: "doctor_subscriptions" }
 );
 
-DoctorSubscriptionSchema.index({ doctorId: 1 }, { unique: true });
-
 module.exports = mongoose.model("DoctorSubscription", DoctorSubscriptionSchema);

@@ -71,5 +71,6 @@ const LogSchema = new mongoose.Schema(
 );
 
 LogSchema.index({ createdAt: -1 });
+LogSchema.index({ origin: 1, type: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Log", LogSchema);

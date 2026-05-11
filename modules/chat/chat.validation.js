@@ -45,7 +45,10 @@ const listMessagesValidation = [
   query("search").optional().isString().withMessage("search must be a string"),
   query("sort").optional().isString().withMessage("sort must be a string"),
   query("page").optional().isInt({ min: 1 }).withMessage("page must be a positive integer"),
-  query("limit").optional().isInt({ min: 1 }).withMessage("limit must be a positive integer"),
+  query("limit")
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage("limit must be between 1 and 100"),
 ];
 
 const updateMessageValidation = [

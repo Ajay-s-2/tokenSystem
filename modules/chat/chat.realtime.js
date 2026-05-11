@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 const chatService = require("./chat.service");
-const { ROLES } = require("../../shared/utils/constants");
+const User = require("../user/user.model");
+const { LOGIN_STATUS, ROLES } = require("../../shared/utils/constants");
+const { createHttpError } = require("../../shared/utils/error.util");
 
 const CHAT_SOCKET_EVENTS = Object.freeze({
   CONNECTED: "chat:connected",
@@ -25,6 +28,8 @@ const CHAT_SOCKET_EVENTS = Object.freeze({
 });
 
 let io = null;
+const SOCKET_EVENT_LIMIT = Number(process.env.CHAT_SOCKET_EVENT_LIMIT_PER_MINUTE || 120);
+const SOCKET_MAX_PAYLOAD_BYTES = Number(process.env.CHAT_SOCKET_MAX_PAYLOAD_BYTES || 10000);
 
 const getUserRoom = (role, userId) => `chat:user:${role}:${String(userId)}`;
 const getConversationRoom = (conversationId) =>
@@ -72,6 +77,88 @@ const sendSocketError = (socket, ack, error) => {
   }
 
   socket.emit(CHAT_SOCKET_EVENTS.ERROR, payload.error);
+};
+
+const getPayloadSize = (payload) => {
+  try {
+    return Buffer.byteLength(JSON.stringify(payload || {}));
+  } catch {
+    return SOCKET_MAX_PAYLOAD_BYTES + 1;
+  }
+};
+
+const assertPayloadObject = (payload) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw createHttpError(400, "Socket payload must be an object", null, "SOCKET_PAYLOAD_INVALID");
+  }
+
+  if (getPayloadSize(payload) > SOCKET_MAX_PAYLOAD_BYTES) {
+    throw createHttpError(413, "Socket payload is too large", null, "SOCKET_PAYLOAD_TOO_LARGE");
+  }
+};
+
+const assertMongoId = (value, field) => {
+  if (!mongoose.isValidObjectId(String(value || ""))) {
+    throw createHttpError(400, `${field} must be a valid mongo id`, null, "SOCKET_VALIDATION_ERROR");
+  }
+};
+
+const assertOptionalString = (value, field, maxLength = 200) => {
+  if (value === undefined || value === null || value === "") return;
+  if (typeof value !== "string" || value.length > maxLength) {
+    throw createHttpError(400, `${field} is invalid`, null, "SOCKET_VALIDATION_ERROR");
+  }
+};
+
+const validateConversationPayload = (payload) => {
+  assertPayloadObject(payload);
+  assertMongoId(payload.doctorId, "doctorId");
+  assertMongoId(payload.hospitalId, "hospitalId");
+  assertOptionalString(payload.conversationId, "conversationId");
+};
+
+const validateMessagePayload = (payload) => {
+  validateConversationPayload(payload);
+  if (!["quick", "manual"].includes(payload.type)) {
+    throw createHttpError(400, "type must be quick or manual", null, "SOCKET_VALIDATION_ERROR");
+  }
+  if (typeof payload.message !== "string" || !payload.message.trim() || payload.message.length > 2000) {
+    throw createHttpError(400, "message is required and must be at most 2000 characters", null, "SOCKET_VALIDATION_ERROR");
+  }
+};
+
+const validateMessageMutationPayload = (payload) => {
+  assertPayloadObject(payload);
+  assertMongoId(payload.id, "id");
+  if (payload.message !== undefined) {
+    if (typeof payload.message !== "string" || !payload.message.trim() || payload.message.length > 2000) {
+      throw createHttpError(400, "message is required and must be at most 2000 characters", null, "SOCKET_VALIDATION_ERROR");
+    }
+  }
+};
+
+const enforceSocketEventLimit = (socket, eventName) => {
+  const now = Date.now();
+  socket.data.rateBuckets = socket.data.rateBuckets || {};
+  const bucket = socket.data.rateBuckets[eventName] || [];
+  const recent = bucket.filter((timestamp) => now - timestamp < 60 * 1000);
+
+  if (recent.length >= SOCKET_EVENT_LIMIT) {
+    socket.data.rateBuckets[eventName] = recent;
+    throw createHttpError(429, "Too many socket events. Please slow down.", null, "SOCKET_RATE_LIMITED");
+  }
+
+  recent.push(now);
+  socket.data.rateBuckets[eventName] = recent;
+};
+
+const guardSocketEvent = (socket, eventName, payload, validator) => {
+  enforceSocketEventLimit(socket, eventName);
+  if (validator) {
+    validator(payload || {});
+  } else {
+    assertPayloadObject(payload || {});
+  }
 };
 
 const acknowledgeSuccess = (ack, data) => {
@@ -133,7 +220,7 @@ const extractToken = (socket) => {
   return null;
 };
 
-const authenticateSocket = (socket, next) => {
+const authenticateSocket = async (socket, next) => {
   try {
     const token = extractToken(socket);
     if (!token) {
@@ -144,12 +231,29 @@ const authenticateSocket = (socket, next) => {
       return next(new Error("JWT_SECRET is not configured"));
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     if (![ROLES.DOCTOR, ROLES.HOSPITAL].includes(decoded?.role)) {
       return next(new Error("Only doctors and hospitals can access chat"));
     }
 
-    socket.user = decoded;
+    const user = await User.findById(decoded.id)
+      .select("_id email role loginStatus isEmailVerified")
+      .lean();
+
+    if (
+      !user ||
+      user.role !== decoded.role ||
+      user.loginStatus !== LOGIN_STATUS.APPROVED ||
+      !user.isEmailVerified
+    ) {
+      return next(new Error("Account is not active"));
+    }
+
+    socket.user = {
+      id: String(user._id),
+      role: user.role,
+      email: user.email,
+    };
     return next();
   } catch (error) {
     return next(new Error("Invalid or expired token"));
@@ -159,6 +263,7 @@ const authenticateSocket = (socket, next) => {
 const initializeChatRealtime = (server, corsOptions) => {
   io = new Server(server, {
     cors: corsOptions,
+    maxHttpBufferSize: SOCKET_MAX_PAYLOAD_BYTES,
   });
 
   io.use(authenticateSocket);
@@ -171,6 +276,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.SUBSCRIBE, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.SUBSCRIBE, payload, validateConversationPayload);
         const context = await chatService.getConversationContext({
           doctorId: payload.doctorId,
           hospitalId: payload.hospitalId,
@@ -210,6 +316,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.UNSUBSCRIBE, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.UNSUBSCRIBE, payload, validateConversationPayload);
         const context = await chatService.getConversationContext({
           doctorId: payload.doctorId,
           hospitalId: payload.hospitalId,
@@ -233,6 +340,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.MESSAGES_LIST, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.MESSAGES_LIST, payload, validateConversationPayload);
         const data = await chatService.listMessages({
           doctorId: payload.doctorId,
           hospitalId: payload.hospitalId,
@@ -249,6 +357,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.MESSAGE_CREATE, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.MESSAGE_CREATE, payload, validateMessagePayload);
         const message = await chatService.createMessage({
           doctorId: payload.doctorId,
           hospitalId: payload.hospitalId,
@@ -268,6 +377,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.MESSAGE_UPDATE, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.MESSAGE_UPDATE, payload, validateMessageMutationPayload);
         const message = await chatService.updateMessage({
           id: payload.id,
           message: payload.message,
@@ -284,6 +394,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.MESSAGE_DELETE, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.MESSAGE_DELETE, payload, validateMessageMutationPayload);
         const data = await chatService.deleteMessage({
           id: payload.id,
           requesterId: socket.user.id,
@@ -299,6 +410,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.CONVERSATION_READ, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.CONVERSATION_READ, payload, validateConversationPayload);
         const data = await chatService.markConversationAsRead({
           doctorId: payload.doctorId,
           hospitalId: payload.hospitalId,
@@ -316,6 +428,7 @@ const initializeChatRealtime = (server, corsOptions) => {
 
     socket.on(CHAT_SOCKET_EVENTS.CONVERSATION_CLEAR, async (payload = {}, ack) => {
       try {
+        guardSocketEvent(socket, CHAT_SOCKET_EVENTS.CONVERSATION_CLEAR, payload, validateConversationPayload);
         const data = await chatService.clearConversation({
           doctorId: payload.doctorId,
           hospitalId: payload.hospitalId,

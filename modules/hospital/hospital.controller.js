@@ -40,7 +40,8 @@ const updateHospitalDepartment = async (req, res) => {
   try {
     const hospital = await hospitalService.updateHospitalDepartment(
       req.params.id,
-      req.body.departmentId
+      req.body.departmentId,
+      req.user
     );
 
     return sendSuccess(res, "Hospital department updated successfully", hospital);

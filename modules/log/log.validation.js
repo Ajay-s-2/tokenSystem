@@ -9,12 +9,29 @@ const createLogValidation = [
     .isIn(LOG_TYPES)
     .withMessage("type must be one of info, success, warn, error"),
   body("message").trim().notEmpty().withMessage("message is required"),
-  body("source").optional({ nullable: true }).isString().withMessage("source must be a string"),
+  body("message").isLength({ max: 1000 }).withMessage("message must be at most 1000 characters"),
+  body("source")
+    .optional({ nullable: true })
+    .isString()
+    .withMessage("source must be a string")
+    .bail()
+    .isLength({ max: 120 })
+    .withMessage("source must be at most 120 characters"),
   body("origin")
     .optional()
     .trim()
     .isIn(LOG_ORIGINS)
     .withMessage("origin must be one of frontend, backend, system"),
+  body("data")
+    .optional({ nullable: true })
+    .custom((value) => {
+      try {
+        return JSON.stringify(value).length <= 10000;
+      } catch {
+        return false;
+      }
+    })
+    .withMessage("data payload is too large"),
 ];
 
 const listLogsValidation = [

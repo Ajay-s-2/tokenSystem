@@ -2,7 +2,13 @@ const { body } = require("express-validator");
 const { ROLES } = require("../../shared/utils/constants");
 
 const registerValidation = [
-  body("name").trim().notEmpty().withMessage("Name is required"),
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Name is required")
+    .bail()
+    .isLength({ max: 120 })
+    .withMessage("Name must be at most 120 characters"),
   body("email").trim().isEmail().withMessage("Valid email is required"),
   body("password")
     .isLength({ min: 6 })
@@ -26,8 +32,8 @@ const otpValidation = [
     .trim()
     .notEmpty()
     .withMessage("OTP is required")
-    .isLength({ min: 4, max: 10 })
-    .withMessage("OTP format is invalid"),
+    .matches(/^\d{6}$/)
+    .withMessage("OTP must be a 6-digit code"),
 ];
 
 const resendOtpValidation = [

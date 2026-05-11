@@ -7,7 +7,10 @@ const DEFAULT_CORS_ORIGINS = [
 
 function getCorsOrigins() {
   const configured = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean)
+    ? process.env.CORS_ORIGIN.split(",")
+        .map((origin) => origin.trim().replace(/\/+$/, ""))
+        .filter(Boolean)
+        .filter((origin) => origin !== "*")
     : [];
 
   return configured.length ? configured : DEFAULT_CORS_ORIGINS;
@@ -15,12 +18,14 @@ function getCorsOrigins() {
 
 function createCorsOriginChecker(origins) {
   return (origin, callback) => {
-    if (!origin || origins.includes(origin)) {
+    const normalizedOrigin = origin ? origin.replace(/\/+$/, "") : origin;
+
+    if (!normalizedOrigin || origins.includes(normalizedOrigin)) {
       callback(null, true);
       return;
     }
 
-    callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    callback(new Error(`Origin ${normalizedOrigin} is not allowed by CORS`));
   };
 }
 

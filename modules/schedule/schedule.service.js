@@ -7,6 +7,7 @@ const Department = require("../department/department.model");
 const HospitalDoctorDepartmentAssignment = require("../hospital/hospital-doctor-department-assignment.model");
 const { ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
+const { parsePagination } = require("../../shared/utils/query.util");
 const {
   normalizeDate,
   isValidDateString,
@@ -107,6 +108,8 @@ const getHospitalForRequester = async (authUser) => {
 
   return hospital;
 };
+
+const isPaginationRequested = (query = {}) => query.page !== undefined || query.limit !== undefined;
 
 const getApprovedDoctorForHospital = async ({ hospitalId, doctorId }) => {
   const normalizedDoctorId = String(doctorId || "").trim();
@@ -339,11 +342,31 @@ const listSchedules = async (query, authUser, language = "en") => {
     filters.$or = [{ doctorId: query.doctorId }, { doctorUserId: query.doctorId }];
   }
 
-  const schedules = await DoctorSchedule.find(filters).sort({
+  const scheduleQuery = DoctorSchedule.find(filters).sort({
     date: -1,
     startTime: 1,
     createdAt: -1,
   });
+
+  if (isPaginationRequested(query)) {
+    const { page, limit, skip } = parsePagination(query);
+    const [schedules, totalRecords] = await Promise.all([
+      scheduleQuery.skip(skip).limit(limit).lean(),
+      DoctorSchedule.countDocuments(filters),
+    ]);
+
+    return {
+      items: await Promise.all(schedules.map((schedule) => mapSchedule(schedule, language))),
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages: totalRecords === 0 ? 0 : Math.ceil(totalRecords / limit),
+      },
+    };
+  }
+
+  const schedules = await scheduleQuery.lean();
 
   return Promise.all(schedules.map((schedule) => mapSchedule(schedule, language)));
 };
@@ -568,7 +591,27 @@ const listTokens = async (query, authUser, language = "en") => {
     filters.$or = [{ doctorId: query.doctorId }, { doctorUserId: query.doctorId }];
   }
 
-  const tokens = await PatientToken.find(filters).sort({ createdAt: -1 });
+  const tokenQuery = PatientToken.find(filters).sort({ createdAt: -1 });
+
+  if (isPaginationRequested(query)) {
+    const { page, limit, skip } = parsePagination(query);
+    const [tokens, totalRecords] = await Promise.all([
+      tokenQuery.skip(skip).limit(limit).lean(),
+      PatientToken.countDocuments(filters),
+    ]);
+
+    return {
+      items: await Promise.all(tokens.map((token) => mapToken(token, language))),
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages: totalRecords === 0 ? 0 : Math.ceil(totalRecords / limit),
+      },
+    };
+  }
+
+  const tokens = await tokenQuery.lean();
   return Promise.all(tokens.map((token) => mapToken(token, language)));
 };
 

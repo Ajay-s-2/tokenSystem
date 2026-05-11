@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Log = require("./log.model");
 const { createHttpError } = require("../../shared/utils/error.util");
 const { parsePagination, buildSort } = require("../../shared/utils/query.util");
+const { redactValue } = require("../../shared/utils/logger.util");
 
 const LOG_TYPES = ["info", "success", "warn", "error"];
 const LOG_ORIGINS = ["frontend", "backend", "system"];
@@ -22,9 +23,9 @@ const normalizeData = (value) => {
   }
 
   try {
-    return JSON.parse(JSON.stringify(value));
+    return redactValue(JSON.parse(JSON.stringify(value)));
   } catch {
-    return { value: String(value) };
+    return { value: "[UNSERIALIZABLE]" };
   }
 };
 
@@ -133,6 +134,7 @@ const listLogs = async (query = {}) => {
       page,
       limit,
       total,
+      totalRecords: total,
       totalPages: total === 0 ? 0 : Math.ceil(total / limit),
     },
   };
@@ -166,7 +168,7 @@ const captureErrorLog = async (error, req) => {
         data: {
           statusCode: error.statusCode || 500,
           errors: error.errors || null,
-          stack: error.stack || null,
+          stack: process.env.NODE_ENV === "production" ? null : error.stack || null,
         },
       },
       {

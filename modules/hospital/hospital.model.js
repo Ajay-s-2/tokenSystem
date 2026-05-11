@@ -34,4 +34,8 @@ const HospitalSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+HospitalSchema.index({ status: 1, createdAt: -1 });
+HospitalSchema.index({ departmentId: 1 });
+HospitalSchema.index({ name: 1 });
+
 module.exports = mongoose.model("Hospital", HospitalSchema);

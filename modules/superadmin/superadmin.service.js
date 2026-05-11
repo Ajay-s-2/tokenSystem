@@ -2,6 +2,7 @@ const { ROLES, LOGIN_STATUS, ONBOARDING_STATUS } = require("../../shared/utils/c
 const { hashPassword } = require("../../shared/utils/password.util");
 const userRepository = require("../user/user.repository");
 const Department = require("../department/department.model");
+const { logger } = require("../../shared/utils/logger.util");
 
 const createAdmin = async (payload) => {
   const {
@@ -69,7 +70,7 @@ const ensureSuperAdmin = async () => {
   const password = process.env.SUPER_ADMIN_PASSWORD;
 
   if (!email || !password) {
-    console.warn("SUPER_ADMIN_EMAIL or SUPER_ADMIN_PASSWORD not set. Skipping super admin seed.");
+    logger.warn("SUPER_ADMIN_EMAIL or SUPER_ADMIN_PASSWORD not set. Skipping super admin seed.");
     return null;
   }
 
@@ -91,7 +92,7 @@ const ensureSuperAdmin = async () => {
     isEmailVerified: true,
   });
 
-  console.log("Super admin created");
+  logger.info("Super admin created");
   return superAdmin;
 };
 
@@ -136,9 +137,9 @@ const ensureDefaultDepartments = async () => {
     }));
 
     await Department.insertMany(departmentsToCreate);
-    console.log(`Created ${departmentsToCreate.length} default departments`);
+    logger.info({ count: departmentsToCreate.length }, "Default departments created");
   } catch (error) {
-    console.error("Error seeding default departments:", error.message);
+    logger.error({ err: error }, "Error seeding default departments");
   }
 };
 

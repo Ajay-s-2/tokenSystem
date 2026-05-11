@@ -82,6 +82,7 @@ const listHospitals = async (query = {}, language = "en") => {
       page,
       limit,
       total,
+      totalRecords: total,
       totalPages: total === 0 ? 0 : Math.ceil(total / limit),
     },
   };
@@ -130,7 +131,7 @@ const createHospitalProfile = async (payload, authUser) => {
   return getHospitalById(hospital._id);
 };
 
-const updateHospitalDepartment = async (hospitalId, departmentId) => {
+const updateHospitalDepartment = async (hospitalId, departmentId, requester = null) => {
   if (!mongoose.isValidObjectId(hospitalId)) {
     throw createHttpError(400, "Invalid hospital id");
   }
@@ -146,6 +147,17 @@ const updateHospitalDepartment = async (hospitalId, departmentId) => {
   const department = await Department.findById(departmentId).lean();
   if (!department) {
     throw createHttpError(404, "Department not found");
+  }
+
+  if (requester?.role === ROLES.HOSPITAL) {
+    const ownedHospital = await Hospital.findOne({
+      _id: hospitalId,
+      userId: requester.id,
+    }).lean();
+
+    if (!ownedHospital) {
+      throw createHttpError(403, "You can only update your own hospital department");
+    }
   }
 
   const hospital = await Hospital.findByIdAndUpdate(

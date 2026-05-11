@@ -47,5 +47,8 @@ const PatientTokenSchema = new mongoose.Schema(
 );
 
 PatientTokenSchema.index({ scheduleId: 1, time: 1 }, { unique: true });
+PatientTokenSchema.index({ hospitalId: 1, date: 1, createdAt: -1 });
+PatientTokenSchema.index({ hospitalId: 1, department: 1, date: 1 });
+PatientTokenSchema.index({ hospitalId: 1, doctorId: 1, date: 1 });
 
 module.exports = mongoose.model("PatientToken", PatientTokenSchema);

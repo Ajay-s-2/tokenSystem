@@ -43,6 +43,8 @@ const buildSort = (sortParam, allowedFields = [], defaultSort = { createdAt: -1 
 };
 
 module.exports = {
+  DEFAULT_LIMIT,
+  MAX_LIMIT,
   parsePagination,
   buildSort,
 };

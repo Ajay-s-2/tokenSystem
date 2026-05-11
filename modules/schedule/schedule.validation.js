@@ -24,6 +24,14 @@ const optionalDepartmentQueryValidation = query("department")
   .notEmpty()
   .withMessage("department cannot be empty");
 
+const optionalPaginationValidation = [
+  query("page").optional().isInt({ min: 1 }).withMessage("page must be a positive integer"),
+  query("limit")
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage("limit must be between 1 and 100"),
+];
+
 const scheduleIdParamValidation = param("scheduleId")
   .isMongoId()
   .withMessage("scheduleId must be a valid mongo id");
@@ -51,6 +59,7 @@ const listSchedulesValidation = [
   optionalDateQueryValidation,
   optionalDoctorQueryValidation,
   optionalDepartmentQueryValidation,
+  ...optionalPaginationValidation,
 ];
 
 const summaryValidation = [optionalDateQueryValidation];
@@ -59,6 +68,7 @@ const listTokensValidation = [
   optionalDateQueryValidation,
   optionalDoctorQueryValidation,
   optionalDepartmentQueryValidation,
+  ...optionalPaginationValidation,
 ];
 
 const createScheduleValidation = [

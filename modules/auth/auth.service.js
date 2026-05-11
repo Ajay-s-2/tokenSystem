@@ -3,6 +3,7 @@ const { hashPassword, comparePassword } = require("../../shared/utils/password.u
 const { generateToken } = require("../../shared/utils/token.util");
 const { createHttpError } = require("../../shared/utils/error.util");
 const otpService = require("../../shared/services/otp.service");
+const emailService = require("../../shared/services/email.service");
 const superAdminOtpStore = require("../../shared/services/superadmin-otp.store");
 const departmentService = require("../department/department.service");
 const Doctor = require("../doctor/doctor.model");
@@ -54,7 +55,11 @@ const register = async (payload) => {
 
   if (role === ROLES.ADMIN) {
     const requiredAccessCode = process.env.ADMIN_ACCESS_CODE;
-    if (requiredAccessCode && adminAccessCode !== requiredAccessCode) {
+    if (!requiredAccessCode) {
+      throw createHttpError(403, "Admin signup is disabled");
+    }
+
+    if (adminAccessCode !== requiredAccessCode) {
       throw createHttpError(403, "Invalid admin access code");
     }
   }
@@ -182,7 +187,7 @@ const register = async (payload) => {
     otpExpiresAt: expiresAt,
   });
 
-  console.log("Registration OTP:", token);
+  await emailService.sendOtpEmail({ to: email, purpose: "registration", otp: token });
 
   return {
     userId: user._id,
@@ -249,7 +254,7 @@ const resendRegisterOtp = async ({ email }) => {
     otpExpiresAt: expiresAt,
   });
 
-  console.log("Resent registration OTP:", token);
+  await emailService.sendOtpEmail({ to: email, purpose: "registration_resend", otp: token });
 
   return { message: "A new registration OTP has been sent." };
 };
@@ -267,7 +272,7 @@ const login = async ({ email, password }) => {
     const { token, secret, expiresAt } = otpService.generateOtp();
     superAdminOtpStore.setOtp(email, { secret, expiresAt });
 
-    console.log("Super Admin Login OTP:", token);
+    await emailService.sendOtpEmail({ to: email, purpose: "super_admin_login", otp: token });
     return { message: "OTP sent. Please verify to complete login." };
   }
 
@@ -300,7 +305,7 @@ const login = async ({ email, password }) => {
     otpExpiresAt: expiresAt,
   });
 
-  console.log("Login OTP:", token);
+  await emailService.sendOtpEmail({ to: email, purpose: "login", otp: token });
 
   return { message: "OTP sent. Please verify to complete login." };
 };
@@ -356,7 +361,7 @@ const resendLoginOtp = async ({ email }) => {
     const { token, secret, expiresAt } = otpService.generateOtp();
     superAdminOtpStore.setOtp(email, { secret, expiresAt });
 
-    console.log("Resent Super Admin Login OTP:", token);
+    await emailService.sendOtpEmail({ to: email, purpose: "super_admin_login_resend", otp: token });
     return { message: "A new login OTP has been sent." };
   }
 
@@ -380,7 +385,7 @@ const resendLoginOtp = async ({ email }) => {
     otpExpiresAt: expiresAt,
   });
 
-  console.log("Resent login OTP:", token);
+  await emailService.sendOtpEmail({ to: email, purpose: "login_resend", otp: token });
 
   return { message: "A new login OTP has been sent." };
 };

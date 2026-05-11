@@ -249,6 +249,7 @@ const listMessages = async ({ doctorId, hospitalId, requesterId, requesterRole, 
       page,
       limit,
       total,
+      totalRecords: total,
       totalPages: total === 0 ? 0 : Math.ceil(total / limit),
     },
   };

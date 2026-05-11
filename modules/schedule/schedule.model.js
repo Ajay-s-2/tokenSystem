@@ -51,5 +51,8 @@ DoctorScheduleSchema.index(
   { hospitalId: 1, doctorId: 1, date: 1, startTime: 1, endTime: 1 },
   { unique: true }
 );
+DoctorScheduleSchema.index({ hospitalId: 1, date: 1, createdAt: -1 });
+DoctorScheduleSchema.index({ hospitalId: 1, department: 1, date: 1 });
+DoctorScheduleSchema.index({ hospitalId: 1, doctorId: 1, date: 1 });
 
 module.exports = mongoose.model("DoctorSchedule", DoctorScheduleSchema);

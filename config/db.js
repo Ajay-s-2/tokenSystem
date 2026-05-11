@@ -1,7 +1,18 @@
 const dns = require("dns");
-// FIX: Force reliable DNS for SRV lookups
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const mongoose  = require("mongoose");
+const { logger } = require("../shared/utils/logger.util");
+
+const configuredDnsServers =
+  process.env.DNS_SERVERS === "system"
+    ? []
+    : (process.env.DNS_SERVERS || "8.8.8.8,8.8.4.4")
+        .split(",")
+        .map((server) => server.trim())
+        .filter(Boolean);
+
+if (configuredDnsServers.length) {
+  dns.setServers(configuredDnsServers);
+}
 
 
 const connectDB = async () => {
@@ -15,7 +26,7 @@ const connectDB = async () => {
     family: 4, // Force IPv4
   });
 
-  console.log("MongoDB connected");
+  logger.info("MongoDB connected");
 };
 
 module.exports = connectDB;

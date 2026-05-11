@@ -51,4 +51,10 @@ const DoctorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+DoctorSchema.index({ status: 1, createdAt: -1 });
+DoctorSchema.index({ department: 1, status: 1 });
+DoctorSchema.index({ approvedHospitals: 1, name: 1 });
+DoctorSchema.index({ selectedHospitals: 1, createdAt: -1 });
+DoctorSchema.index({ rejectedHospitals: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Doctor", DoctorSchema);
