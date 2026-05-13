@@ -28,6 +28,7 @@ const getConfig = () => ({
   jsonBodyLimit: process.env.JSON_BODY_LIMIT || "100kb",
   urlEncodedBodyLimit: process.env.URL_ENCODED_BODY_LIMIT || "100kb",
   logDevOtp: !IS_PRODUCTION && process.env.DEV_LOG_OTP !== "false",
+  logHttpRequests: IS_PRODUCTION || process.env.DEV_LOG_HTTP_REQUESTS === "true",
 });
 
 const getConfigIssues = () => {

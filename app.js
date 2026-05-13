@@ -43,7 +43,9 @@ app.use(
   })
 );
 
-app.use(requestLogger);
+if (config.logHttpRequests) {
+  app.use(requestLogger);
+}
 
 // API abuse protection. Route-specific limiters are mounted before the global
 // limiter so auth and log ingestion get tighter budgets without changing paths.
