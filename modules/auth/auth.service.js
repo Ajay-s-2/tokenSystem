@@ -4,7 +4,6 @@ const { generateToken } = require("../../shared/utils/token.util");
 const { createHttpError } = require("../../shared/utils/error.util");
 const otpService = require("../../shared/services/otp.service");
 const emailService = require("../../shared/services/email.service");
-const superAdminOtpStore = require("../../shared/services/superadmin-otp.store");
 const departmentService = require("../department/department.service");
 const Doctor = require("../doctor/doctor.model");
 const Hospital = require("../hospital/hospital.model");
@@ -269,11 +268,8 @@ const login = async ({ email, password }) => {
       throw createHttpError(401, "Invalid credentials");
     }
 
-    const { token, secret, expiresAt } = otpService.generateOtp();
-    superAdminOtpStore.setOtp(email, { secret, expiresAt });
-
-    await emailService.sendOtpEmail({ to: email, purpose: "super_admin_login", otp: token });
-    return { message: "OTP sent. Please verify to complete login." };
+    const token = generateToken({ id: "super_admin", role: ROLES.SUPER_ADMIN, email });
+    return { token, role: ROLES.SUPER_ADMIN };
   }
 
   const user = await userRepository.findByEmail(email);
@@ -298,103 +294,14 @@ const login = async ({ email, password }) => {
     throw createHttpError(403, "Email is not verified");
   }
 
-  const { token, secret, expiresAt } = otpService.generateOtp();
-
-  await userRepository.updateById(user._id, {
-    otpSecret: secret,
-    otpExpiresAt: expiresAt,
-  });
-
-  await emailService.sendOtpEmail({ to: email, purpose: "login", otp: token });
-
-  return { message: "OTP sent. Please verify to complete login." };
-};
-
-const verifyLoginOtp = async ({ email, otp }) => {
-  if (!email || !otp) {
-    throw createHttpError(400, "Email and OTP are required");
-  }
-
-  if (isEnvSuperAdmin(email)) {
-    const otpRecord = superAdminOtpStore.getOtp(email);
-    const { valid, reason } = otpService.verifyOtp(otp, otpRecord?.secret, otpRecord?.expiresAt);
-    if (!valid) {
-      throw createHttpError(400, reason || "Invalid OTP");
-    }
-
-    superAdminOtpStore.clearOtp(email);
-    const token = generateToken({ id: "super_admin", role: ROLES.SUPER_ADMIN, email });
-
-    return { token, role: ROLES.SUPER_ADMIN };
-  }
-
-  const user = await userRepository.findByEmail(email);
-  if (!user) {
-    throw createHttpError(404, "User not found");
-  }
-
-  if (user.loginStatus !== LOGIN_STATUS.APPROVED) {
-    throw createHttpError(403, "Only approved users can complete login");
-  }
-
-  const { valid, reason } = otpService.verifyOtp(otp, user.otpSecret, user.otpExpiresAt);
-  if (!valid) {
-    throw createHttpError(400, reason || "Invalid OTP");
-  }
-
-  await userRepository.updateById(user._id, {
-    otpSecret: null,
-    otpExpiresAt: null,
-  });
-
   const token = generateToken({ id: user._id, role: user.role, email: user.email });
 
   return { token, role: user.role };
-};
-
-const resendLoginOtp = async ({ email }) => {
-  if (!email) {
-    throw createHttpError(400, "Email is required");
-  }
-
-  if (isEnvSuperAdmin(email)) {
-    const { token, secret, expiresAt } = otpService.generateOtp();
-    superAdminOtpStore.setOtp(email, { secret, expiresAt });
-
-    await emailService.sendOtpEmail({ to: email, purpose: "super_admin_login_resend", otp: token });
-    return { message: "A new login OTP has been sent." };
-  }
-
-  const user = await userRepository.findByEmail(email);
-  if (!user) {
-    throw createHttpError(404, "User not found");
-  }
-
-  if (user.loginStatus !== LOGIN_STATUS.APPROVED) {
-    throw createHttpError(403, "Only approved users can request login OTP");
-  }
-
-  if (!user.isEmailVerified) {
-    throw createHttpError(403, "Email is not verified");
-  }
-
-  const { token, secret, expiresAt } = otpService.generateOtp();
-
-  await userRepository.updateById(user._id, {
-    otpSecret: secret,
-    otpExpiresAt: expiresAt,
-  });
-
-  await emailService.sendOtpEmail({ to: email, purpose: "login_resend", otp: token });
-
-  return { message: "A new login OTP has been sent." };
 };
 
 module.exports = {
   register,
   verifyRegisterOtp,
   login,
-  verifyLoginOtp,
   resendRegisterOtp,
-  resendLoginOtp,
 };

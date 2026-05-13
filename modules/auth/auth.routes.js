@@ -22,17 +22,5 @@ router.post(
 
 // Login flow
 router.post("/login", authValidation.loginValidation, validationMiddleware, authController.login);
-router.post(
-  "/verify-login-otp",
-  authValidation.otpValidation,
-  validationMiddleware,
-  authController.verifyLoginOtp
-);
-router.post(
-  "/resend-login-otp",
-  authValidation.resendOtpValidation,
-  validationMiddleware,
-  authController.resendLoginOtp
-);
 
 module.exports = router;

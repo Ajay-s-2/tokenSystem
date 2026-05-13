@@ -2245,71 +2245,14 @@
         "tags": [
           "Auth Module"
         ],
-        "summary": "Login step 1",
-        "description": "Validates email and password and blocks users whose approval status is not approved. On success, OTP is generated for login verification.",
+        "summary": "Login",
+        "description": "Validates email and password, blocks users whose approval status is not approved, and returns a JWT token on success.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OTP generated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
-                },
-                "example": {
-                  "success": true,
-                  "message": "OTP sent. Please verify to complete login.",
-                  "data": null
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Invalid credentials"
-          },
-          "403": {
-            "description": "Approval blocked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "success": false,
-                  "message": "Your account is still pending admin approval",
-                  "errors": null
-                }
-              }
-            }
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationFailed"
-          }
-        }
-      }
-    },
-    "/auth/verify-login-otp": {
-      "post": {
-        "tags": [
-          "Auth Module"
-        ],
-        "summary": "Login step 2",
-        "description": "Verifies login OTP and returns a JWT token.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyOtpRequest"
               }
             }
           }
@@ -2333,14 +2276,23 @@
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
+          "401": {
+            "description": "Invalid credentials"
           },
           "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
+            "description": "Approval blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Your account is still pending admin approval",
+                  "errors": null
+                }
+              }
+            }
           },
           "422": {
             "$ref": "#/components/responses/ValidationFailed"
@@ -2383,54 +2335,6 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationFailed"
-          }
-        }
-      }
-    },
-    "/auth/resend-login-otp": {
-      "post": {
-        "tags": [
-          "Auth Module"
-        ],
-        "summary": "Resend login OTP",
-        "description": "Generates and sends a fresh OTP for completing login for already approved and email-verified users.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResendOtpRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Login OTP resent",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
-                },
-                "example": {
-                  "success": true,
-                  "message": "A new login OTP has been sent.",
-                  "data": null
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
