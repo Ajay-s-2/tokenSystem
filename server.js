@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const { getCorsOrigins, createCorsOriginChecker } = require("./config/cors");
 const { ensureSuperAdmin, ensureDefaultDepartments } = require("./modules/superadmin/superadmin.service");
 const { initializeChatRealtime } = require("./modules/chat/chat.realtime");
+const { initializeCallRealtime, CALL_SOCKET_PATH } = require("./modules/call/call.realtime");
 const { getConfig, validateStartupConfig } = require("./config/env");
 const { logger } = require("./shared/utils/logger.util");
 
@@ -25,6 +26,10 @@ const startServer = async () => {
     const corsOrigins = getCorsOrigins();
     const server = http.createServer(app);
     initializeChatRealtime(server, {
+      origin: createCorsOriginChecker(corsOrigins),
+      credentials: true,
+    });
+    await initializeCallRealtime(server, {
       origin: createCorsOriginChecker(corsOrigins),
       credentials: true,
     });
@@ -49,6 +54,7 @@ const startServer = async () => {
           apiBaseUrl: `http://localhost:${PORT}/api`,
           apiDocsEnabled: config.enableApiDocs,
           chatSocketUrl: `http://localhost:${PORT}`,
+          callSocketUrl: `http://localhost:${PORT}${CALL_SOCKET_PATH}`,
         },
         "Server started"
       );

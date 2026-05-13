@@ -2,6 +2,7 @@ const express = require("express");
 const authRoutes = require("../modules/auth/auth.routes");
 const adminRoutes = require("../modules/admin/admin.routes");
 const chatRoutes = require("../modules/chat/chat.routes");
+const callRoutes = require("../modules/call/call.routes");
 const departmentRoutes = require("../modules/department/department.routes");
 const doctorRoutes = require("../modules/doctor/doctor.routes");
 const hospitalRoutes = require("../modules/hospital/hospital.routes");
@@ -19,6 +20,7 @@ router.get("/health", (req, res) => {
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
 router.use("/chat", chatRoutes);
+router.use("/calls", callRoutes);
 router.use("/departments", departmentRoutes);
 router.use("/doctors", doctorRoutes);
 router.use("/doctor-schedules", scheduleRoutes);

@@ -261,6 +261,10 @@ const authenticateSocket = async (socket, next) => {
 };
 
 const initializeChatRealtime = (server, corsOptions) => {
+  if (io) {
+    return io;
+  }
+
   io = new Server(server, {
     cors: corsOptions,
     maxHttpBufferSize: SOCKET_MAX_PAYLOAD_BYTES,
