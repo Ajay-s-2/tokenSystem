@@ -573,11 +573,13 @@ const createCall = async (payload, authUser) => {
 
   const existingActiveCall = await CallSession.findOne({
     doctorUserId: authUser.id,
+    hospitalId: hospital._id,
+    messageId: selectedMessage.id,
     status: { $in: ACTIVE_SESSION_STATUSES },
   });
 
   if (existingActiveCall) {
-    throw createHttpError(409, "Doctor already has an active operational call");
+    throw createHttpError(409, "This operational call is already active for the selected hospital");
   }
 
   let session;
@@ -598,7 +600,7 @@ const createCall = async (payload, authUser) => {
     });
   } catch (error) {
     if (error?.code === 11000) {
-      throw createHttpError(409, "Doctor already has an active operational call");
+      throw createHttpError(409, "This operational call is already active for the selected hospital");
     }
     throw error;
   }

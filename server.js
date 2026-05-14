@@ -6,6 +6,7 @@ const { getCorsOrigins, createCorsOriginChecker } = require("./config/cors");
 const { ensureSuperAdmin, ensureDefaultDepartments } = require("./modules/superadmin/superadmin.service");
 const { initializeChatRealtime } = require("./modules/chat/chat.realtime");
 const { initializeCallRealtime, CALL_SOCKET_PATH } = require("./modules/call/call.realtime");
+const { ensureCallSessionIndexes } = require("./modules/call/call-session.model");
 const { getConfig, validateStartupConfig } = require("./config/env");
 const { logger } = require("./shared/utils/logger.util");
 
@@ -16,6 +17,7 @@ const startServer = async () => {
   try {
     validateStartupConfig({ logger });
     await connectDB();
+    await ensureCallSessionIndexes();
 
     // Ensure a super admin exists based on .env credentials
     await ensureSuperAdmin();

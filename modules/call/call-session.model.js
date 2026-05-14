@@ -1,4 +1,9 @@
 const mongoose = require("mongoose");
+const { logger } = require("../../shared/utils/logger.util");
+
+const ACTIVE_CALL_STATUSES = ["ACTIVE", "ACKNOWLEDGED"];
+const LEGACY_DOCTOR_ACTIVE_INDEX = "doctorUserId_1_status_1";
+const ACTIVE_CALL_DUPLICATE_GUARD_INDEX = "doctorUserId_1_hospitalId_1_messageId_1_status_1";
 
 const CallSessionSchema = new mongoose.Schema(
   {
@@ -96,8 +101,45 @@ const CallSessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-CallSessionSchema.index({ doctorUserId: 1, status: 1 });
+CallSessionSchema.index(
+  { doctorUserId: 1, hospitalId: 1, messageId: 1, status: 1 },
+  {
+    name: ACTIVE_CALL_DUPLICATE_GUARD_INDEX,
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ACTIVE_CALL_STATUSES },
+    },
+  }
+);
 CallSessionSchema.index({ hospitalId: 1, status: 1, startedAt: -1 });
 CallSessionSchema.index({ doctorUserId: 1, startedAt: -1 });
 
-module.exports = mongoose.model("CallSession", CallSessionSchema);
+const CallSession = mongoose.model("CallSession", CallSessionSchema);
+
+async function ensureCallSessionIndexes() {
+  const indexes = await CallSession.collection.indexes();
+  const legacyIndex = indexes.find((index) => index.name === LEGACY_DOCTOR_ACTIVE_INDEX && index.unique);
+
+  if (legacyIndex) {
+    await CallSession.collection.dropIndex(LEGACY_DOCTOR_ACTIVE_INDEX);
+    logger.info({ index: LEGACY_DOCTOR_ACTIVE_INDEX }, "Dropped legacy call-session unique index");
+  }
+
+  const duplicateGuardIndex = indexes.find((index) => index.name === ACTIVE_CALL_DUPLICATE_GUARD_INDEX);
+  if (!duplicateGuardIndex) {
+    await CallSession.collection.createIndex(
+      { doctorUserId: 1, hospitalId: 1, messageId: 1, status: 1 },
+      {
+        name: ACTIVE_CALL_DUPLICATE_GUARD_INDEX,
+        unique: true,
+        partialFilterExpression: {
+          status: { $in: ACTIVE_CALL_STATUSES },
+        },
+      }
+    );
+    logger.info({ index: ACTIVE_CALL_DUPLICATE_GUARD_INDEX }, "Created active-call duplicate guard index");
+  }
+}
+
+module.exports = CallSession;
+module.exports.ensureCallSessionIndexes = ensureCallSessionIndexes;
