@@ -20,12 +20,6 @@ const CallMessageTemplateSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
-    priority: {
-      type: String,
-      enum: ["routine", "priority", "critical"],
-      default: "routine",
-      trim: true,
-    },
     sortOrder: {
       type: Number,
       required: true,

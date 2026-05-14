@@ -55,7 +55,7 @@ const mapMessageTemplate = (template) => {
   return {
     id: String(source._id),
     label: source.label,
-    priority: source.priority,
+    priority: source.priority || "routine",
     source: "custom",
   };
 };
@@ -193,7 +193,7 @@ const normalizeMessageSelection = async ({ doctorUserId, messageId, messageLabel
       return {
         id: String(customMatch._id),
         label: customMatch.label,
-        priority: customMatch.priority,
+        priority: customMatch.priority || "routine",
       };
     }
 
@@ -214,7 +214,7 @@ const normalizeMessageSelection = async ({ doctorUserId, messageId, messageLabel
       return {
         id: String(customMatch._id),
         label: customMatch.label,
-        priority: customMatch.priority,
+        priority: customMatch.priority || "routine",
       };
     }
 
@@ -427,7 +427,6 @@ const createMessageTemplate = async (payload, authUser) => {
     doctorUserId: authUser.id,
     doctorId: doctor._id,
     label: String(payload.label || "").trim(),
-    priority: String(payload.priority || "routine").trim(),
     sortOrder: nextSortOrder,
   });
 
@@ -452,7 +451,6 @@ const updateMessageTemplate = async (templateId, payload, authUser) => {
   }
 
   template.label = String(payload.label || template.label).trim();
-  template.priority = String(payload.priority || template.priority).trim();
   await template.save();
 
   return mapMessageTemplate(template);

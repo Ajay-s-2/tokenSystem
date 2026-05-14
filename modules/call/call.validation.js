@@ -1,6 +1,5 @@
 const { body, param, query } = require("express-validator");
 
-const CALL_PRIORITIES = ["routine", "priority", "critical"];
 const CALL_FINAL_STATUSES = ["completed", "cancelled", "missed"];
 const CALL_EVENT_TYPES = ["CALL_CREATED", "CALL_ACKNOWLEDGED", "CALL_ENDED"];
 
@@ -25,11 +24,6 @@ const createMessageTemplateValidation = [
     .bail()
     .isLength({ max: 120 })
     .withMessage("label must be at most 120 characters"),
-  body("priority")
-    .optional()
-    .trim()
-    .isIn(CALL_PRIORITIES)
-    .withMessage("priority must be one of routine, priority, critical"),
 ];
 
 const updateMessageTemplateValidation = [
@@ -40,6 +34,8 @@ const updateMessageTemplateValidation = [
 const deleteMessageTemplateValidation = [
   param("templateId").isMongoId().withMessage("templateId must be a valid mongo id"),
 ];
+
+const CALL_PRIORITIES = ["routine", "priority", "critical"];
 
 const createCallValidation = [
   body("hospitalId").isMongoId().withMessage("hospitalId must be a valid mongo id"),
