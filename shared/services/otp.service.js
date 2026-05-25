@@ -1,66 +1,45 @@
-const OTPAuth = require("otpauth");
 const crypto = require("crypto");
-const { OTP_EXPIRY_MINUTES } = require("../utils/constants");
+const { getConfig } = require("../../config/env");
+const { constantTimeEquals, sha256 } = require("../utils/crypto.util");
 
-const buildSecret = (secretValue) => {
-  if (!secretValue) return null;
-  if (secretValue instanceof OTPAuth.Secret) return secretValue;
-
-  if (OTPAuth.Secret.fromBase32) return OTPAuth.Secret.fromBase32(secretValue);
-  if (OTPAuth.Secret.fromHex) return OTPAuth.Secret.fromHex(secretValue);
-
-  return new OTPAuth.Secret({ base32: secretValue });
-};
+const generateOtpCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, "0");
 
 const generateOtp = () => {
-  // OTPAuth v9 does not provide Secret.generate(), so generate random bytes manually
-  const randomBytes = crypto.randomBytes(20); // 160-bit secret
-  const secret = OTPAuth.Secret.fromHex(randomBytes.toString("hex"));
-
-  const totp = new OTPAuth.TOTP({
-    issuer: "HospitalToken",
-    label: "Auth",
-    algorithm: "SHA1",
-    digits: 6,
-    period: OTP_EXPIRY_MINUTES * 60,
-    secret,
-  });
-
-  const token = totp.generate();
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+  const config = getConfig();
+  const token = generateOtpCode();
+  const expiresAt = new Date(Date.now() + config.otpExpiryMinutes * 60 * 1000);
 
   return {
     token,
-    secret: secret.base32,
+    hash: sha256(token),
     expiresAt,
   };
 };
 
-const verifyOtp = (token, secretValue, expiresAt) => {
-  if (!secretValue) {
+const verifyOtp = (token, otpHash, expiresAt, attempts = 0) => {
+  const config = getConfig();
+
+  if (!otpHash) {
     return { valid: false, reason: "OTP not generated" };
   }
 
-  if (expiresAt && Date.now() > new Date(expiresAt).getTime()) {
+  if (attempts >= config.otpMaxAttempts) {
+    return { valid: false, reason: "Too many invalid OTP attempts" };
+  }
+
+  if (!expiresAt || Date.now() > new Date(expiresAt).getTime()) {
     return { valid: false, reason: "OTP expired" };
   }
 
-  const secret = buildSecret(secretValue);
-  if (!secret) {
-    return { valid: false, reason: "OTP secret missing" };
+  const incomingHash = sha256(token);
+  if (!constantTimeEquals(incomingHash, otpHash)) {
+    return { valid: false, reason: "Invalid OTP" };
   }
 
-  const totp = new OTPAuth.TOTP({
-    issuer: "HospitalToken",
-    label: "Auth",
-    algorithm: "SHA1",
-    digits: 6,
-    period: OTP_EXPIRY_MINUTES * 60,
-    secret,
-  });
-
-  const delta = totp.validate({ token, window: 0 });
-  return { valid: delta !== null };
+  return { valid: true };
 };
 
-module.exports = { generateOtp, verifyOtp };
+module.exports = {
+  generateOtp,
+  verifyOtp,
+};

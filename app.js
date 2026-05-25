@@ -9,12 +9,20 @@ const swaggerSpec = require("./swagger.json");
 const { getCorsOrigins, createCorsOriginChecker } = require("./config/cors");
 const languageMiddleware = require("./middleware/language.middleware");
 const requestLogger = require("./middleware/requestLogger.middleware");
+const cookieMiddleware = require("./middleware/cookie.middleware");
+const { csrfProtectionMiddleware, csrfTokenMiddleware } = require("./middleware/csrf.middleware");
+const {
+  mongoSanitizeMiddleware,
+  xssCleanMiddleware,
+  hppMiddleware,
+} = require("./middleware/security.middleware");
 const {
   globalApiLimiter,
   authLimiter,
   logLimiter,
 } = require("./middleware/rateLimiter.middleware");
 const { getConfig } = require("./config/env");
+const { sendError } = require("./shared/utils/response.util");
 
 const app = express();
 const config = getConfig();
@@ -25,13 +33,37 @@ app.set("trust proxy", 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
-    contentSecurityPolicy: config.enableApiDocs ? false : undefined,
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    contentSecurityPolicy: config.enableApiDocs
+      ? false
+      : {
+          useDefaults: true,
+          directives: {
+            "default-src": ["'self'"],
+            "connect-src": ["'self'"],
+            "img-src": ["'self'", "data:"],
+            "style-src": ["'self'", "'unsafe-inline'"],
+          },
+        },
+    hsts: config.isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+    frameguard: { action: "deny" },
+    referrerPolicy: { policy: "no-referrer" },
   })
 );
+
+app.use((req, res, next) => {
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  return next();
+});
 
 // Parse request bodies with safe limits
 app.use(express.json({ limit: config.jsonBodyLimit }));
 app.use(express.urlencoded({ extended: true, limit: config.urlEncodedBodyLimit }));
+app.use(cookieMiddleware);
+app.use(mongoSanitizeMiddleware);
+app.use(xssCleanMiddleware);
+app.use(hppMiddleware);
+app.use(csrfTokenMiddleware);
 app.use(languageMiddleware);
 
 // Enable CORS for API clients
@@ -52,6 +84,7 @@ if (config.logHttpRequests) {
 app.use("/api/auth", authLimiter);
 app.use("/api/logs", logLimiter);
 app.use("/api", globalApiLimiter);
+app.use("/api", csrfProtectionMiddleware);
 
 // API routes
 app.use("/api", routes);
@@ -64,11 +97,7 @@ if (config.enableApiDocs) {
 
 // 404 handler for unknown routes
 app.use((req, res) => {
-  return res.status(404).json({
-    success: false,
-    message: "Route not found",
-    errorCode: "ROUTE_NOT_FOUND",
-  });
+  return sendError(res, "Route not found", 404, null, "ROUTE_NOT_FOUND");
 });
 
 // Central error handler

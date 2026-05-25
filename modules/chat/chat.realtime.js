@@ -5,6 +5,9 @@ const chatService = require("./chat.service");
 const User = require("../user/user.model");
 const { LOGIN_STATUS, ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
+const { parseCookies, ACCESS_COOKIE_NAME } = require("../../shared/utils/cookie.util");
+const { verifyAccessToken } = require("../../shared/utils/token.util");
+const authSessionRepository = require("../auth/auth-session.repository");
 
 const CHAT_SOCKET_EVENTS = Object.freeze({
   CONNECTED: "chat:connected",
@@ -212,6 +215,11 @@ const extractToken = (socket) => {
     return String(headerToken).replace(/^Bearer\s+/i, "").trim();
   }
 
+  const cookieToken = parseCookies(socket.handshake?.headers?.cookie || "")[ACCESS_COOKIE_NAME];
+  if (cookieToken) {
+    return String(cookieToken).trim();
+  }
+
   const queryToken = socket.handshake?.query?.token;
   if (queryToken) {
     return String(queryToken).replace(/^Bearer\s+/i, "").trim();
@@ -227,22 +235,22 @@ const authenticateSocket = async (socket, next) => {
       return next(new Error("Unauthorized"));
     }
 
-    if (!process.env.JWT_SECRET) {
-      return next(new Error("JWT_SECRET is not configured"));
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+    const decoded = verifyAccessToken(token);
     if (![ROLES.DOCTOR, ROLES.HOSPITAL].includes(decoded?.role)) {
       return next(new Error("Only doctors and hospitals can access chat"));
     }
 
-    const user = await User.findById(decoded.id)
-      .select("_id email role loginStatus isEmailVerified")
-      .lean();
+    const [user, session] = await Promise.all([
+      User.findById(decoded.id).select("_id email role loginStatus isEmailVerified tokenVersion").lean(),
+      authSessionRepository.findActiveById(decoded.sessionId),
+    ]);
 
     if (
       !user ||
+      !session ||
+      String(session.userId) !== String(user._id) ||
       user.role !== decoded.role ||
+      Number(user.tokenVersion || 0) !== Number(decoded.tokenVersion || 0) ||
       user.loginStatus !== LOGIN_STATUS.APPROVED ||
       !user.isEmailVerified
     ) {

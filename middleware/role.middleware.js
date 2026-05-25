@@ -1,18 +1,22 @@
 const { sendError } = require("../shared/utils/response.util");
-const { ROLES } = require("../shared/utils/constants");
+const { hasRoleAccess, hasPermissionAccess } = require("../shared/utils/authz.util");
 
-const VALID_ROLES = new Set(Object.values(ROLES));
+const roleMiddleware = (allowedRoles = [], requiredPermissions = []) => {
+  const normalizedPermissions = Array.isArray(requiredPermissions)
+    ? requiredPermissions
+    : [requiredPermissions].filter(Boolean);
 
-const roleMiddleware = (allowedRoles = []) => {
   return (req, res, next) => {
     if (!req.user) {
       return sendError(res, "Unauthorized", 401, null, "UNAUTHORIZED");
     }
 
-    // Allow only specific roles
-    const userRole = req.user.role;
-    if (!VALID_ROLES.has(userRole) || !allowedRoles.includes(userRole)) {
-      return sendError(res, "Forbidden: insufficient permissions", 403, null, "FORBIDDEN");
+    if (!hasRoleAccess(req.user.role, allowedRoles)) {
+      return sendError(res, "Forbidden: insufficient role access", 403, null, "FORBIDDEN");
+    }
+
+    if (!hasPermissionAccess(req.user.role, normalizedPermissions)) {
+      return sendError(res, "Forbidden: missing permissions", 403, null, "FORBIDDEN");
     }
 
     return next();

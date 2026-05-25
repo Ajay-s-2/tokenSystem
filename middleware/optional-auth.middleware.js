@@ -1,50 +1,54 @@
-const jwt = require("jsonwebtoken");
+const { verifyAccessToken } = require("../shared/utils/token.util");
+const { parseCookies, ACCESS_COOKIE_NAME } = require("../shared/utils/cookie.util");
+const { getRolePermissions } = require("../shared/utils/authz.util");
+const { LOGIN_STATUS } = require("../shared/utils/constants");
+const authSessionRepository = require("../modules/auth/auth-session.repository");
 const User = require("../modules/user/user.model");
-const { LOGIN_STATUS, ROLES } = require("../shared/utils/constants");
 
-const isEnvSuperAdminToken = (decoded) =>
-  decoded?.id === "super_admin" &&
-  decoded?.role === ROLES.SUPER_ADMIN &&
-  process.env.SUPER_ADMIN_EMAIL &&
-  String(decoded.email || "").toLowerCase() === process.env.SUPER_ADMIN_EMAIL.toLowerCase();
+const extractAccessToken = (req) => {
+  const [scheme, token] = String(req.headers.authorization || "").split(" ");
+  if (scheme === "Bearer" && token) {
+    return token.trim();
+  }
+
+  const cookies = req.cookies || parseCookies(req.headers.cookie || "");
+  return cookies[ACCESS_COOKIE_NAME] || null;
+};
 
 const optionalAuthMiddleware = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return next();
-  }
-
-  const [scheme, token] = authHeader.split(" ");
-  if (scheme !== "Bearer" || !token) {
-    return next();
-  }
-
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
+  const token = extractAccessToken(req);
+  if (!token) {
     return next();
   }
 
   try {
-    const decoded = jwt.verify(token, secret, { algorithms: ["HS256"] });
+    const decoded = verifyAccessToken(token);
+    const [user, session] = await Promise.all([
+      User.findById(decoded.id).select("_id email role loginStatus isEmailVerified tokenVersion").lean(),
+      authSessionRepository.findActiveById(decoded.sessionId),
+    ]);
 
-    if (isEnvSuperAdminToken(decoded)) {
-      req.user = decoded;
-      return next();
-    }
-
-    const user = await User.findById(decoded.id)
-      .select("_id email role loginStatus isEmailVerified")
-      .lean();
-
-    if (user && user.role === decoded.role && user.loginStatus === LOGIN_STATUS.APPROVED && user.isEmailVerified) {
+    if (
+      user &&
+      session &&
+      String(session.userId) === String(user._id) &&
+      user.role === decoded.role &&
+      Number(user.tokenVersion || 0) === Number(decoded.tokenVersion || 0) &&
+      user.loginStatus === LOGIN_STATUS.APPROVED &&
+      user.isEmailVerified
+    ) {
       req.user = {
         id: String(user._id),
         role: user.role,
         email: user.email,
+        sessionId: String(session._id),
+        permissions: getRolePermissions(user.role),
+        tokenVersion: Number(user.tokenVersion || 0),
       };
+      req.authSession = session;
     }
   } catch {
-    // Ignore invalid optional auth headers so public log ingestion still works.
+    // Optional auth should never block public routes.
   }
 
   return next();

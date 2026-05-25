@@ -57,6 +57,25 @@ module.exports = {
 
     let profile = null;
 
+    if (user.role === ROLES.SUPER_ADMIN) {
+      return {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: ROLES.ADMIN,
+          actualRole: ROLES.SUPER_ADMIN,
+          loginStatus: user.loginStatus,
+          approvalStatus: getApprovalStatusFromLoginStatus(user.loginStatus),
+          onboardingStatus: user.onboardingStatus,
+          isEmailVerified: user.isEmailVerified,
+          departmentId: user.departmentId,
+          departmentName: user.departmentName,
+        },
+        profile: null,
+      };
+    }
+
     if (user.role === ROLES.DOCTOR) {
       try {
         profile = await doctorService.getDoctorById(user._id, language);

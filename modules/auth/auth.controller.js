@@ -1,45 +1,81 @@
 const authService = require("./auth.service");
-const { sendSuccess, sendError } = require("../../shared/utils/response.util");
+const { sendSuccess } = require("../../shared/utils/response.util");
+const asyncHandler = require("../../middleware/async.middleware");
+const {
+  attachAuthCookies,
+  clearAuthCookies,
+  REFRESH_COOKIE_NAME,
+} = require("../../shared/utils/cookie.util");
 
-const register = async (req, res) => {
-  try {
-    const data = await authService.register(req.body);
-    return sendSuccess(res, data.message, { userId: data.userId }, 201);
-  } catch (error) {
-    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
-  }
-};
+const register = asyncHandler(async (req, res) => {
+  const data = await authService.register(req.body, req);
+  return sendSuccess(res, data.message, { userId: data.userId }, 201);
+});
 
-const verifyRegisterOtp = async (req, res) => {
-  try {
-    const data = await authService.verifyRegisterOtp(req.body);
-    return sendSuccess(res, data.message);
-  } catch (error) {
-    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
-  }
-};
+const verifyRegisterOtp = asyncHandler(async (req, res) => {
+  const data = await authService.verifyRegisterOtp(req.body, req);
+  return sendSuccess(res, data.message);
+});
 
-const login = async (req, res) => {
-  try {
-    const data = await authService.login(req.body);
-    return sendSuccess(res, "Login successful", data);
-  } catch (error) {
-    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
-  }
-};
+const resendRegisterOtp = asyncHandler(async (req, res) => {
+  const data = await authService.resendRegisterOtp(req.body, req);
+  return sendSuccess(res, data.message);
+});
 
-const resendRegisterOtp = async (req, res) => {
-  try {
-    const data = await authService.resendRegisterOtp(req.body);
-    return sendSuccess(res, data.message);
-  } catch (error) {
-    return sendError(res, error.message, error.statusCode || 400, error.errors || null);
-  }
-};
+const login = asyncHandler(async (req, res) => {
+  const data = await authService.login(req.body, req);
+  attachAuthCookies(res, data);
+  return sendSuccess(res, "Login successful", {
+    role: data.role,
+    actualRole: data.actualRole,
+    sessionId: data.sessionId,
+  });
+});
+
+const refresh = asyncHandler(async (req, res) => {
+  const data = await authService.refreshSession(
+    { refreshToken: req.cookies?.[REFRESH_COOKIE_NAME] || null },
+    req
+  );
+  attachAuthCookies(res, data);
+  return sendSuccess(res, "Session refreshed", {
+    role: data.role,
+    actualRole: data.actualRole,
+    sessionId: data.sessionId,
+  });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  await authService.logout(
+    {
+      sessionId: req.user?.sessionId || null,
+      refreshToken: req.cookies?.[REFRESH_COOKIE_NAME] || null,
+    },
+    req
+  );
+  clearAuthCookies(res);
+  return sendSuccess(res, "Logout successful");
+});
+
+const logoutAll = asyncHandler(async (req, res) => {
+  await authService.logoutAll(req.user, req);
+  clearAuthCookies(res);
+  return sendSuccess(res, "Logged out from all devices");
+});
+
+const getCsrfToken = asyncHandler(async (req, res) => {
+  return sendSuccess(res, "CSRF token issued", {
+    csrfToken: req.csrfToken(),
+  });
+});
 
 module.exports = {
   register,
   verifyRegisterOtp,
-  login,
   resendRegisterOtp,
+  login,
+  refresh,
+  logout,
+  logoutAll,
+  getCsrfToken,
 };
