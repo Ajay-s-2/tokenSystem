@@ -11,6 +11,11 @@ const SENSITIVE_KEYS = new Set([
   "otp",
   "otpSecret",
   "emailChangeOtpSecret",
+  "aadhaar",
+  "patientName",
+  "contact",
+  "dob",
+  "bloodGroup",
 ]);
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -44,6 +49,11 @@ const logger = pino({
       "*.secret",
       "*.otpSecret",
       "*.emailChangeOtpSecret",
+      "*.aadhaar",
+      "*.patientName",
+      "*.contact",
+      "*.dob",
+      "*.bloodGroup",
     ],
     censor: "[REDACTED]",
   },

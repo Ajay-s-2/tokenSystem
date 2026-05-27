@@ -7,7 +7,8 @@ const Department = require("../department/department.model");
 const HospitalDoctorDepartmentAssignment = require("../hospital/hospital-doctor-department-assignment.model");
 const { ROLES } = require("../../shared/utils/constants");
 const { createHttpError } = require("../../shared/utils/error.util");
-const { parsePagination } = require("../../shared/utils/query.util");
+const { buildPaginatedResponse, MAX_LIMIT, parsePagination } = require("../../shared/utils/query.util");
+const { logger } = require("../../shared/utils/logger.util");
 const {
   normalizeDate,
   isValidDateString,
@@ -18,6 +19,7 @@ const {
 const { getLocalizedDisplayValue } = require("../../shared/utils/localization.util");
 
 const CONSULTATION_TIME_OPTIONS = [15, 30];
+const SCHEDULE_PAGINATION_DEFAULT_LIMIT = 50;
 const OVERLAP_ERROR_MESSAGE = "Schedule time overlaps with existing schedule";
 const TOKEN_STATUS = Object.freeze({
   NOT_STARTED: "NOT_STARTED",
@@ -110,6 +112,12 @@ const getHospitalForRequester = async (authUser) => {
 };
 
 const isPaginationRequested = (query = {}) => query.page !== undefined || query.limit !== undefined;
+
+const parseSchedulePagination = (query = {}) =>
+  parsePagination(query, {
+    defaultLimit: SCHEDULE_PAGINATION_DEFAULT_LIMIT,
+    maxLimit: MAX_LIMIT,
+  });
 
 const getApprovedDoctorForHospital = async ({ hospitalId, doctorId }) => {
   const normalizedDoctorId = String(doctorId || "").trim();
@@ -349,22 +357,32 @@ const listSchedules = async (query, authUser, language = "en") => {
   });
 
   if (isPaginationRequested(query)) {
-    const { page, limit, skip } = parsePagination(query);
+    const { page, limit, skip } = parseSchedulePagination(query);
     const [schedules, totalRecords] = await Promise.all([
       scheduleQuery.skip(skip).limit(limit).lean(),
       DoctorSchedule.countDocuments(filters),
     ]);
+    const items = await Promise.all(schedules.map((schedule) => mapSchedule(schedule, language)));
 
-    return {
-      items: await Promise.all(schedules.map((schedule) => mapSchedule(schedule, language))),
-      pagination: {
-        page,
-        limit,
-        totalRecords,
-        totalPages: totalRecords === 0 ? 0 : Math.ceil(totalRecords / limit),
-      },
-    };
+    return buildPaginatedResponse({
+      items,
+      page,
+      limit,
+      totalRecords,
+    });
   }
+
+  logger.warn(
+    {
+      hospitalId: String(hospital._id),
+      filters: {
+        date: filters.date || null,
+        department: filters.department || null,
+        doctorId: query.doctorId || null,
+      },
+    },
+    "Unpaginated doctor schedules request detected"
+  );
 
   const schedules = await scheduleQuery.lean();
 
@@ -594,22 +612,32 @@ const listTokens = async (query, authUser, language = "en") => {
   const tokenQuery = PatientToken.find(filters).sort({ createdAt: -1 });
 
   if (isPaginationRequested(query)) {
-    const { page, limit, skip } = parsePagination(query);
+    const { page, limit, skip } = parseSchedulePagination(query);
     const [tokens, totalRecords] = await Promise.all([
       tokenQuery.skip(skip).limit(limit).lean(),
       PatientToken.countDocuments(filters),
     ]);
+    const items = await Promise.all(tokens.map((token) => mapToken(token, language)));
 
-    return {
-      items: await Promise.all(tokens.map((token) => mapToken(token, language))),
-      pagination: {
-        page,
-        limit,
-        totalRecords,
-        totalPages: totalRecords === 0 ? 0 : Math.ceil(totalRecords / limit),
-      },
-    };
+    return buildPaginatedResponse({
+      items,
+      page,
+      limit,
+      totalRecords,
+    });
   }
+
+  logger.warn(
+    {
+      hospitalId: String(hospital._id),
+      filters: {
+        date: filters.date || null,
+        department: filters.department || null,
+        doctorId: query.doctorId || null,
+      },
+    },
+    "Unpaginated tokens request detected"
+  );
 
   const tokens = await tokenQuery.lean();
   return Promise.all(tokens.map((token) => mapToken(token, language)));

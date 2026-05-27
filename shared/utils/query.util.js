@@ -7,14 +7,39 @@ const parsePositiveInt = (value, fallback) => {
   return Number.isNaN(parsed) || parsed <= 0 ? fallback : parsed;
 };
 
-const parsePagination = (query = {}) => {
-  const page = parsePositiveInt(query.page, DEFAULT_PAGE);
-  const limit = Math.min(parsePositiveInt(query.limit, DEFAULT_LIMIT), MAX_LIMIT);
+const parsePagination = (query = {}, options = {}) => {
+  const defaultPage = parsePositiveInt(options.defaultPage, DEFAULT_PAGE);
+  const defaultLimit = parsePositiveInt(options.defaultLimit, DEFAULT_LIMIT);
+  const maxLimit = parsePositiveInt(options.maxLimit, MAX_LIMIT);
+  const page = parsePositiveInt(query.page, defaultPage);
+  const limit = Math.min(parsePositiveInt(query.limit, defaultLimit), maxLimit);
 
   return {
     page,
     limit,
     skip: (page - 1) * limit,
+  };
+};
+
+const buildPaginatedResponse = ({ items, page, limit, totalRecords }) => {
+  const total = Number(totalRecords || 0);
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
+  return {
+    items,
+    data: items,
+    page,
+    limit,
+    total,
+    totalRecords: total,
+    totalPages,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalRecords: total,
+      totalPages,
+    },
   };
 };
 
@@ -46,5 +71,6 @@ module.exports = {
   DEFAULT_LIMIT,
   MAX_LIMIT,
   parsePagination,
+  buildPaginatedResponse,
   buildSort,
 };

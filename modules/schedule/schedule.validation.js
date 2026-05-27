@@ -24,10 +24,25 @@ const optionalDepartmentQueryValidation = query("department")
   .notEmpty()
   .withMessage("department cannot be empty");
 
+const sanitizePositiveInt = ({ fallback, max = null } = {}) => (value) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(String(value), 10);
+  const safeValue = Number.isNaN(parsed) || parsed < 1 ? fallback : parsed;
+  return max ? Math.min(safeValue, max) : safeValue;
+};
+
 const optionalPaginationValidation = [
-  query("page").optional().isInt({ min: 1 }).withMessage("page must be a positive integer"),
+  query("page")
+    .optional()
+    .customSanitizer(sanitizePositiveInt({ fallback: 1 }))
+    .isInt({ min: 1 })
+    .withMessage("page must be a positive integer"),
   query("limit")
     .optional()
+    .customSanitizer(sanitizePositiveInt({ fallback: 50, max: 100 }))
     .isInt({ min: 1, max: 100 })
     .withMessage("limit must be between 1 and 100"),
 ];

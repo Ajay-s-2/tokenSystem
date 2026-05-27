@@ -253,18 +253,24 @@ const initializeCallRealtime = async (server, corsOptions) => {
     const userId = socket.user?.id;
     const role = socket.user?.role;
 
-    if (role === ROLES.DOCTOR) {
-      await socket.join(getDoctorRoom(userId));
-    } else if (role === ROLES.HOSPITAL) {
-      const hospital = await Hospital.findOne({ userId }).select("_id").lean();
-      if (hospital?._id) {
-        await socket.join(getHospitalRoom(hospital._id));
+    try {
+      if (role === ROLES.DOCTOR) {
+        await socket.join(getDoctorRoom(userId));
+      } else if (role === ROLES.HOSPITAL) {
+        const hospital = await Hospital.findOne({ userId }).select("_id").lean();
+        if (hospital?._id) {
+          await socket.join(getHospitalRoom(hospital._id));
+        }
+      } else if ([ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(role)) {
+        await socket.join(getAdminRoom());
       }
-    } else if ([ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(role)) {
-      await socket.join(getAdminRoom());
-    }
 
-    socket.emit(CALL_SOCKET_EVENTS.CONNECTED, { userId, role });
+      socket.emit(CALL_SOCKET_EVENTS.CONNECTED, { userId, role });
+    } catch (error) {
+      sendSocketError(socket, null, error);
+      socket.disconnect(true);
+      return;
+    }
 
     socket.on(CALL_SOCKET_EVENTS.SUBSCRIBE, async (payload = {}, ack) => {
       try {

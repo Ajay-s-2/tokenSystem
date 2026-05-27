@@ -2,36 +2,56 @@ const { body, param, query } = require("express-validator");
 
 const LOG_TYPES = ["info", "success", "warn", "error"];
 const LOG_ORIGINS = ["frontend", "backend", "system"];
+const MAX_LOG_MESSAGE_LENGTH = 1000;
+const MAX_LOG_SOURCE_LENGTH = 120;
+const MAX_LOG_DATA_BYTES = 10000;
+
+const truncate = (maxLength) => (value) => {
+  if (value === undefined || value === null) return value;
+  const text = String(value).trim();
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
+};
 
 const createLogValidation = [
   body("type")
     .trim()
+    .toLowerCase()
     .isIn(LOG_TYPES)
     .withMessage("type must be one of info, success, warn, error"),
-  body("message").trim().notEmpty().withMessage("message is required"),
-  body("message").isLength({ max: 1000 }).withMessage("message must be at most 1000 characters"),
+  body("message")
+    .customSanitizer(truncate(MAX_LOG_MESSAGE_LENGTH))
+    .notEmpty()
+    .withMessage("message is required"),
   body("source")
     .optional({ nullable: true })
+    .customSanitizer(truncate(MAX_LOG_SOURCE_LENGTH))
     .isString()
     .withMessage("source must be a string")
     .bail()
-    .isLength({ max: 120 })
+    .isLength({ max: MAX_LOG_SOURCE_LENGTH })
     .withMessage("source must be at most 120 characters"),
   body("origin")
     .optional()
     .trim()
+    .toLowerCase()
     .isIn(LOG_ORIGINS)
     .withMessage("origin must be one of frontend, backend, system"),
   body("data")
     .optional({ nullable: true })
     .custom((value) => {
       try {
-        return JSON.stringify(value).length <= 10000;
-      } catch {
-        return false;
+        // Only validate if data is present
+        if (!value) return true;
+        
+        // Ensure data is serializable and not too large
+        const serialized = JSON.stringify(value);
+        return Buffer.byteLength(serialized, "utf8") <= MAX_LOG_DATA_BYTES;
+      } catch (error) {
+        // Reject non-serializable data with clear error
+        throw new Error("data must be JSON-serializable");
       }
     })
-    .withMessage("data payload is too large"),
+    .withMessage("data must be JSON-serializable and under 10000 bytes"),
 ];
 
 const listLogsValidation = [
