@@ -22,29 +22,20 @@ const CONSULTATION_TIME_OPTIONS = [15, 30];
 const SCHEDULE_PAGINATION_DEFAULT_LIMIT = 50;
 const OVERLAP_ERROR_MESSAGE = "Schedule time overlaps with existing schedule";
 const TOKEN_STATUS = Object.freeze({
-  WAITING: "WAITING",
-  CALLED: "CALLED",
-  IN_PROGRESS: "IN_PROGRESS",
+  NOT_STARTED: "NOT_STARTED",
+  IN_PROGRESS: "inprogress",
   COMPLETED: "COMPLETED",
-  NO_SHOW: "NO_SHOW",
-  CANCELLED: "CANCELLED",
-  LEGACY_NOT_STARTED: "NOT_STARTED",
-  LEGACY_CALLING: "CALLING",
-  LEGACY_IN_PROGRESS: "inprogress",
 });
-
-const ACTIVE_TOKEN_STATUSES = [TOKEN_STATUS.CALLED, TOKEN_STATUS.IN_PROGRESS, TOKEN_STATUS.LEGACY_CALLING, TOKEN_STATUS.LEGACY_IN_PROGRESS];
-const WAITING_TOKEN_STATUSES = [TOKEN_STATUS.WAITING, TOKEN_STATUS.LEGACY_NOT_STARTED];
-const TERMINAL_TOKEN_STATUSES = [TOKEN_STATUS.COMPLETED, TOKEN_STATUS.NO_SHOW, TOKEN_STATUS.CANCELLED];
 
 const ACTIVE_TOKEN_BLOCK_MESSAGE = "Complete the current token before calling the next patient.";
 
-const toCanonicalTokenStatus = (status) => {
-  if (status === TOKEN_STATUS.LEGACY_NOT_STARTED) return TOKEN_STATUS.WAITING;
-  if (status === TOKEN_STATUS.LEGACY_CALLING || status === TOKEN_STATUS.LEGACY_IN_PROGRESS) {
-    return TOKEN_STATUS.CALLED;
-  }
-  return status || TOKEN_STATUS.WAITING;
+const TOKEN_STATUS_RESPONSE = Object.freeze({
+  CALLING: "CALLING",
+});
+
+const mapTokenStatus = (status) => {
+  if (status === TOKEN_STATUS.IN_PROGRESS) return TOKEN_STATUS_RESPONSE.CALLING;
+  return status || TOKEN_STATUS.NOT_STARTED;
 };
 
 const mapSchedule = async (schedule, language = "en") => {
@@ -105,7 +96,7 @@ const mapToken = async (token, language = "en") => {
     displayDoctorName: await getLocalizedDisplayValue(source.doctorName, language),
     date: source.date,
     time: source.time,
-    status: toCanonicalTokenStatus(source.status),
+    status: mapTokenStatus(source.status),
     createdAt: source.createdAt,
     createdAtDisplay: formatCreatedAt(source.createdAt),
   };
@@ -203,23 +194,22 @@ const hasAssignedTokens = async (schedule) => {
 const normalizeTokenStatus = (value) => {
   const normalizedValue = String(value || "").trim();
 
-  if (normalizedValue === TOKEN_STATUS.WAITING || normalizedValue === TOKEN_STATUS.LEGACY_NOT_STARTED) {
-    return TOKEN_STATUS.WAITING;
+  if (normalizedValue === TOKEN_STATUS.NOT_STARTED) {
+    return TOKEN_STATUS.NOT_STARTED;
   }
 
-  if (normalizedValue === TOKEN_STATUS.CALLED || normalizedValue === TOKEN_STATUS.LEGACY_CALLING) {
-    return TOKEN_STATUS.CALLED;
+  if (normalizedValue === TOKEN_STATUS.COMPLETED) {
+    return TOKEN_STATUS.COMPLETED;
   }
 
-  if (normalizedValue === TOKEN_STATUS.IN_PROGRESS || normalizedValue.toLowerCase() === TOKEN_STATUS.LEGACY_IN_PROGRESS) {
+  if (
+    normalizedValue === TOKEN_STATUS_RESPONSE.CALLING ||
+    normalizedValue.toLowerCase() === TOKEN_STATUS.IN_PROGRESS
+  ) {
     return TOKEN_STATUS.IN_PROGRESS;
   }
 
-  if (TERMINAL_TOKEN_STATUSES.includes(normalizedValue)) {
-    return normalizedValue;
-  }
-
-  throw createHttpError(400, "status must be one of WAITING, CALLED, IN_PROGRESS, COMPLETED, NO_SHOW, CANCELLED");
+  throw createHttpError(400, "status must be one of NOT_STARTED, inprogress, COMPLETED");
 };
 
 const ensureValidScheduleDate = (date) => {
@@ -726,7 +716,7 @@ const assignToken = async (payload, authUser, language = "en") => {
         bloodGroup: String(payload.bloodGroup || "").trim(),
         aadhaar: String(payload.aadhaar || "").trim(),
         contact: String(payload.contact || "").trim(),
-        status: TOKEN_STATUS.WAITING,
+        status: TOKEN_STATUS.NOT_STARTED,
       });
     } catch (error) {
       await DoctorSchedule.updateOne(
@@ -815,18 +805,16 @@ const updateTokenStatus = async (tokenId, statusValue, authUser, language = "en"
     throw createHttpError(404, "Patient token not found");
   }
 
-  const currentStatus = toCanonicalTokenStatus(token.status);
-
-  if (nextStatus === TOKEN_STATUS.CALLED) {
-    if (currentStatus !== TOKEN_STATUS.WAITING) {
-      throw createHttpError(409, "Only waiting tokens can be called");
+  if (nextStatus === TOKEN_STATUS.IN_PROGRESS) {
+    if (token.status !== TOKEN_STATUS.NOT_STARTED) {
+      throw createHttpError(409, "Only pending tokens can be called");
     }
 
     const activeToken = await PatientToken.findOne({
       hospitalId: hospital._id,
       doctorId: token.doctorId,
       date: token.date,
-      status: { $in: ACTIVE_TOKEN_STATUSES },
+      status: TOKEN_STATUS.IN_PROGRESS,
       _id: { $ne: token._id },
     }).lean();
 
@@ -834,79 +822,28 @@ const updateTokenStatus = async (tokenId, statusValue, authUser, language = "en"
       throw createHttpError(409, ACTIVE_TOKEN_BLOCK_MESSAGE);
     }
 
-    const earliestWaitingToken = await PatientToken.findOne({
-      hospitalId: hospital._id,
-      doctorId: token.doctorId,
-      date: token.date,
-      status: { $in: WAITING_TOKEN_STATUSES },
-    })
-      .sort({ tokenNumber: 1, time: 1, createdAt: 1, _id: 1 })
-      .lean();
-
-    if (!earliestWaitingToken) {
-      throw createHttpError(404, "No waiting token found for this doctor");
-    }
-
     try {
-      const calledToken = await PatientToken.findOneAndUpdate(
+      const updatedToken = await PatientToken.findOneAndUpdate(
         {
-          _id: earliestWaitingToken._id,
+          _id: token._id,
           hospitalId: hospital._id,
-          status: { $in: WAITING_TOKEN_STATUSES },
+          status: TOKEN_STATUS.NOT_STARTED,
         },
-        { $set: { status: TOKEN_STATUS.CALLED } },
+        { $set: { status: TOKEN_STATUS.IN_PROGRESS } },
         { new: true }
       );
 
-      if (!calledToken) {
+      if (!updatedToken) {
         throw createHttpError(409, "Token status changed. Please refresh and try again.");
       }
 
-      return mapToken(calledToken, language);
+      return mapToken(updatedToken, language);
     } catch (error) {
       if (error?.code === 11000) {
         throw createHttpError(409, ACTIVE_TOKEN_BLOCK_MESSAGE);
       }
       throw error;
     }
-  }
-
-  if (nextStatus === TOKEN_STATUS.IN_PROGRESS) {
-    if (currentStatus !== TOKEN_STATUS.CALLED) {
-      throw createHttpError(409, "Only called tokens can be marked in progress");
-    }
-
-    const inProgressToken = await PatientToken.findOneAndUpdate(
-      {
-        _id: token._id,
-        hospitalId: hospital._id,
-        status: { $in: [TOKEN_STATUS.CALLED, TOKEN_STATUS.LEGACY_CALLING, TOKEN_STATUS.LEGACY_IN_PROGRESS] },
-      },
-      { $set: { status: TOKEN_STATUS.IN_PROGRESS } },
-      { new: true }
-    );
-
-    if (!inProgressToken) {
-      throw createHttpError(409, "Token status changed. Please refresh and try again.");
-    }
-
-    return mapToken(inProgressToken, language);
-  }
-
-  if (nextStatus === TOKEN_STATUS.COMPLETED) {
-    if (![TOKEN_STATUS.CALLED, TOKEN_STATUS.IN_PROGRESS].includes(currentStatus)) {
-      throw createHttpError(409, "Only active tokens can be completed");
-    }
-  } else if (nextStatus === TOKEN_STATUS.NO_SHOW) {
-    if (currentStatus !== TOKEN_STATUS.CALLED) {
-      throw createHttpError(409, "Only called tokens can be marked no-show");
-    }
-  } else if (nextStatus === TOKEN_STATUS.CANCELLED) {
-    if (currentStatus !== TOKEN_STATUS.WAITING) {
-      throw createHttpError(409, "Only waiting tokens can be cancelled");
-    }
-  } else if (nextStatus === TOKEN_STATUS.WAITING) {
-    throw createHttpError(409, "Tokens cannot be reset to waiting after processing starts");
   }
 
   token.status = nextStatus;
@@ -929,10 +866,6 @@ const updateToken = async (tokenId, payload, authUser, language = "en") => {
 
   if (!token) {
     throw createHttpError(404, "Patient token not found");
-  }
-
-  if (toCanonicalTokenStatus(token.status) !== TOKEN_STATUS.WAITING) {
-    throw createHttpError(409, "Token can only be edited before it is called");
   }
 
   token.patientName = String(payload.patientName || "").trim();
@@ -960,10 +893,6 @@ const deleteToken = async (tokenId, authUser) => {
 
   if (!token) {
     throw createHttpError(404, "Patient token not found");
-  }
-
-  if (toCanonicalTokenStatus(token.status) !== TOKEN_STATUS.WAITING) {
-    throw createHttpError(409, "Token can only be deleted before it is called");
   }
 
   await DoctorSchedule.updateOne(

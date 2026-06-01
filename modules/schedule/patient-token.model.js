@@ -38,18 +38,8 @@ const PatientTokenSchema = new mongoose.Schema(
     contact: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: [
-        "WAITING",
-        "CALLED",
-        "IN_PROGRESS",
-        "COMPLETED",
-        "NO_SHOW",
-        "CANCELLED",
-        "NOT_STARTED",
-        "CALLING",
-        "inprogress",
-      ],
-      default: "WAITING",
+      enum: ["NOT_STARTED", "inprogress", "COMPLETED"],
+      default: "NOT_STARTED",
       trim: true,
     },
   },
@@ -65,7 +55,7 @@ PatientTokenSchema.index(
   {
     unique: true,
     partialFilterExpression: {
-      status: { $in: ["CALLED", "IN_PROGRESS", "CALLING", "inprogress"] },
+      status: { $in: ["inprogress"] },
     },
   }
 );

@@ -62,18 +62,13 @@ const tokenStatusValidator = body("status")
   .custom((value) => {
     const normalizedValue = String(value || "").trim();
     return (
-      normalizedValue === "WAITING" ||
-      normalizedValue === "CALLED" ||
-      normalizedValue === "IN_PROGRESS" ||
-      normalizedValue === "NO_SHOW" ||
-      normalizedValue === "CANCELLED" ||
       normalizedValue === "NOT_STARTED" ||
       normalizedValue === "COMPLETED" ||
       normalizedValue === "CALLING" ||
       normalizedValue.toLowerCase() === "inprogress"
     );
   })
-  .withMessage("status must be one of WAITING, CALLED, IN_PROGRESS, COMPLETED, NO_SHOW, CANCELLED");
+  .withMessage("status must be one of NOT_STARTED, inprogress, COMPLETED");
 
 const listSchedulesValidation = [
   optionalDateQueryValidation,
