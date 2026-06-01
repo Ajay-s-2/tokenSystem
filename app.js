@@ -18,7 +18,6 @@ const {
 } = require("./middleware/security.middleware");
 const {
   globalApiLimiter,
-  authLimiter,
   logLimiter,
 } = require("./middleware/rateLimiter.middleware");
 const { getConfig } = require("./config/env");
@@ -79,9 +78,8 @@ if (config.logHttpRequests) {
   app.use(requestLogger);
 }
 
-// API abuse protection. Route-specific limiters are mounted before the global
-// limiter so auth and log ingestion get tighter budgets without changing paths.
-app.use("/api/auth", authLimiter);
+// API abuse protection. Route-specific auth limiters live on the exact routes
+// so csrf-token and successful login requests do not consume the same bucket.
 app.use("/api/logs", logLimiter);
 app.use("/api", globalApiLimiter);
 app.use("/api", csrfProtectionMiddleware);

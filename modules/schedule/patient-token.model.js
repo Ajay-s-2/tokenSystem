@@ -38,8 +38,18 @@ const PatientTokenSchema = new mongoose.Schema(
     contact: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ["NOT_STARTED", "inprogress", "COMPLETED"],
-      default: "NOT_STARTED",
+      enum: [
+        "WAITING",
+        "CALLED",
+        "IN_PROGRESS",
+        "COMPLETED",
+        "NO_SHOW",
+        "CANCELLED",
+        "NOT_STARTED",
+        "CALLING",
+        "inprogress",
+      ],
+      default: "WAITING",
       trim: true,
     },
   },
@@ -50,5 +60,14 @@ PatientTokenSchema.index({ scheduleId: 1, time: 1 }, { unique: true });
 PatientTokenSchema.index({ hospitalId: 1, date: 1, createdAt: -1 });
 PatientTokenSchema.index({ hospitalId: 1, department: 1, date: 1 });
 PatientTokenSchema.index({ hospitalId: 1, doctorId: 1, date: 1 });
+PatientTokenSchema.index(
+  { hospitalId: 1, doctorId: 1, date: 1, activeTokenLock: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["CALLED", "IN_PROGRESS", "CALLING", "inprogress"] },
+    },
+  }
+);
 
 module.exports = mongoose.model("PatientToken", PatientTokenSchema);

@@ -4,6 +4,7 @@ const validationMiddleware = require("../../middleware/validation.middleware");
 const authValidation = require("./auth.validation");
 const authMiddleware = require("../../middleware/auth.middleware");
 const {
+  authLimiter,
   loginLimiter,
   otpLimiter,
   refreshLimiter,
@@ -13,7 +14,7 @@ const router = express.Router();
 
 router.get("/csrf-token", authController.getCsrfToken);
 
-router.post("/register", authValidation.registerValidation, validationMiddleware, authController.register);
+router.post("/register", authLimiter, authValidation.registerValidation, validationMiddleware, authController.register);
 router.post(
   "/verify-register-otp",
   otpLimiter,

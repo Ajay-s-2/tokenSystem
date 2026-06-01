@@ -2,16 +2,19 @@ const rateLimit = require("express-rate-limit");
 const { sendError } = require("../shared/utils/response.util");
 const { getConfig } = require("../config/env");
 
+const ipKeyGenerator = rateLimit.ipKeyGenerator || ((ip) => ip);
+
 const buildRateLimitHandler = (errorCode) => (req, res) =>
   sendError(res, "Too many requests. Please try again later.", 429, null, errorCode);
 
-const buildLimiter = ({ windowMs, limit, errorCode, skipSuccessfulRequests = false }) =>
+const buildLimiter = ({ windowMs, limit, errorCode, skipSuccessfulRequests = false, keyGenerator }) =>
   rateLimit({
     windowMs,
     limit,
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests,
+    keyGenerator,
     handler: buildRateLimitHandler(errorCode),
   });
 
@@ -33,6 +36,11 @@ const loginLimiter = buildLimiter({
   windowMs: 15 * 60 * 1000,
   limit: config.loginRateLimitPer15Minutes,
   errorCode: "LOGIN_RATE_LIMITED",
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    return `${ipKeyGenerator(req.ip)}:${email || "unknown"}`;
+  },
 });
 
 const otpLimiter = buildLimiter({
